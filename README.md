@@ -55,8 +55,6 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
   - Add support for user-customizable themes and UI elements.
 - **Improved Platform Integration**:
   - Leverage native features on iOS and Android for a richer experience.
-- **WebRTC Integration**:
-  - Real-time voice and video support for web and mobile platforms.
 
 ## Contribution
 
