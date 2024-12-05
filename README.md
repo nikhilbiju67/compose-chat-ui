@@ -1,5 +1,5 @@
 # Compose Multiplatform Chat Interface
-
+https://github.com/user-attachments/assets/86a1fd48-7fcc-4fdc-9ebc-dbcc2633c429
 This project is a Compose Multiplatform demonstration showcasing a chat interface. The application is designed to run seamlessly across Android, iOS, desktop, and web platforms, delivering a consistent user experience.
 
 ## Features
@@ -12,10 +12,8 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
   - Currently under development.
   - Will support audio recording across supported platforms when complete.
 
-## Video Demonstration
 
-Check out the video demonstration of the app in action:
-https://github.com/user-attachments/assets/86a1fd48-7fcc-4fdc-9ebc-dbcc2633c429
+
 
 ## Tech Stack
 
