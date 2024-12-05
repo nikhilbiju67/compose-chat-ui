@@ -15,7 +15,7 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
 ## Video Demonstration
 
 Check out the video demonstration of the app in action:
-[![Compose Chat Interface Demo](https://github.com/user-attachments/assets/86a1fd48-7fcc-4fdc-9ebc-dbcc2633c429)](https://github.com/user-attachments/assets/86a1fd48-7fcc-4fdc-9ebc-dbcc2633c429)
+https://github.com/user-attachments/assets/86a1fd48-7fcc-4fdc-9ebc-dbcc2633c429
 
 ## Tech Stack
 
