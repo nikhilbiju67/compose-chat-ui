@@ -34,7 +34,7 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
 - **Android**: Android Studio Arctic Fox or later.
 - **iOS**: Xcode 13 or later.
 - **Desktop**: Ensure VLC Media Player is installed.
-- **Web**: A modern browser like Chrome, Firefox, or Safari.
+- **Web**: A modern browser like Chrome, Firefox Safari not supported.
 
 ### Running the Project
 
