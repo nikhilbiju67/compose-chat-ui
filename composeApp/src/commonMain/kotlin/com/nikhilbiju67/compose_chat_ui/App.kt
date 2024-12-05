@@ -1,19 +1,19 @@
 package com.nikhilbiju67.compose_chat_ui
 
+//import com.nikhilbiju67.compose_chat_ui.audio.AudioPlayer
+//import com.nikhilbiju67.compose_chat_ui.audio.rememberPlayerState
+//import com.nikhilbiju67.compose_chat_ui.styles.MessageBubbleStyle
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.ProgressIndicatorDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,9 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.nikhilbiju67.compose_chat_ui.audio.AudioPlayer
 import com.nikhilbiju67.compose_chat_ui.audio.rememberPlayerState
-//import com.nikhilbiju67.compose_chat_ui.audio.AudioPlayer
-//import com.nikhilbiju67.compose_chat_ui.audio.rememberPlayerState
-//import com.nikhilbiju67.compose_chat_ui.styles.MessageBubbleStyle
 import com.nikhilbiju67.compose_chat_ui.styles.defaultBubbleStyle
 import com.nikhilbiju67.compose_chat_ui.styles.defaultChatStyle
 import composechatui.composeapp.generated.resources.Res
@@ -78,36 +75,45 @@ fun AudioMessage(audioMessage: AudioMessage, audioPlayer: AudioPlayer) {
     val audioProgress by audioPlayer.audioProgress.collectAsState(initial = 0.0)
     val playerState = remember { audioPlayer.playerState() }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        IconButton(onClick = {
-            if (playerState.isPlaying) {
-                audioPlayer.pause()
-            } else {
-                audioPlayer.addSongsUrls(listOf(audioMessage.messageContent))
-                audioPlayer.play()
-            }
-        }) {
-            Icon(
-                painter = painterResource(if (playerState.isPlaying) Res.drawable.pause_circle_24px else Res.drawable.play_circle_24px),
-                contentDescription = null
-            )
-        }
-
-        Column(
-            modifier = Modifier.weight(1f)
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(end = 24.dp)
+                .fillMaxWidth()
         ) {
-            Text("${playerState.currentTime}s / ${playerState.duration}s")
-            Spacer(modifier = Modifier.height(4.dp))
-            LinearProgressIndicator(
-                progress = playerState.progressPercentage / 100f,
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.Blue
-            )
+            IconButton(
+
+                modifier = Modifier.size(32.dp),
+                onClick = {
+                    if (playerState.isPlaying) {
+                        audioPlayer.pause()
+                    } else {
+                        audioPlayer.addSongsUrls(listOf(audioMessage.messageContent))
+                        audioPlayer.play()
+                    }
+                }) {
+                Icon(
+                    painter = painterResource(if (playerState.isPlaying) Res.drawable.pause_circle_24px else Res.drawable.play_circle_24px),
+                    contentDescription = null
+                )
+            }
+
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.SpaceEvenly
+            ) {
+                LinearProgressIndicator(
+                    progress = playerState.progressPercentage / 100f,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Blue
+                )
+
+            }
         }
+        Text(
+            "${playerState.currentTime}s / ${playerState.duration}s",
+            style = MaterialTheme.typography.body2
+        )
     }
 }
