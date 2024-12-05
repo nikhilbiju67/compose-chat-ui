@@ -1,5 +1,5 @@
-# Compose Multiplatform Chat Interface
 https://github.com/user-attachments/assets/86a1fd48-7fcc-4fdc-9ebc-dbcc2633c429
+# Compose Multiplatform Chat Interface
 This project is a Compose Multiplatform demonstration showcasing a chat interface. The application is designed to run seamlessly across Android, iOS, desktop, and web platforms, delivering a consistent user experience.
 
 ## Features
