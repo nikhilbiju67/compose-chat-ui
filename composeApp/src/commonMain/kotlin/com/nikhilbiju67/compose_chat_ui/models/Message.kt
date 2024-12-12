@@ -1,5 +1,6 @@
 package models
 
+import com.nikhilbiju67.compose_chat_ui.audio.PlayerState
 import kotlinx.datetime.LocalDateTime
 
 abstract class Message {
@@ -57,12 +58,18 @@ class AudioMessage(
     override val sentBy: User,
     override val sentTo: List<User>,
     override val messageContent: String,
+    val url: String? = null,
+    val localFilePath: String? = null,
+    val mediaStatus: MediaStatus? = null,
     override val replyingToMessageId: String? = null,
     override val messageReactions: List<MessageReaction> = emptyList()
 ) : Message() {
     override val messageType: MessageType = MessageType.AUDIO
 
+    val effectiveAudioSource: String?
+        get() = if (!url.isNullOrEmpty()) url else localFilePath
 }
+
 
 class FileMessage(
     override val id: String,
@@ -104,7 +111,6 @@ data class MessageData(
 )
 
 
-
 //source code from androidX
 fun String.toColorInt(): Int {
     if (this[0] == '#') {
@@ -118,3 +124,10 @@ fun String.toColorInt(): Int {
     }
     throw IllegalArgumentException("Unknown color")
 }
+
+data class MediaStatus(
+    val currentlyPlaying: Message? = null,
+    val audioProgress: Float = 0f,
+    val isPlaying: Boolean = false,
+    val playerState: PlayerState? = null
+)

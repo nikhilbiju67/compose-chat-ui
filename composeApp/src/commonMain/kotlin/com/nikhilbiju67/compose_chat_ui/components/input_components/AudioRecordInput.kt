@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nikhilbiju67.compose_chat_ui.audio.AudioPlayer
+import com.nikhilbiju67.compose_chat_ui.audio.AudioRecord
 import components.BlinkView
 import composechatui.composeapp.generated.resources.Res
 import composechatui.composeapp.generated.resources.baseline_mic_24
@@ -44,6 +46,7 @@ fun AudioRecordingInput(
     onAnimationComplete: () -> Unit,
     cancelled: Boolean = false
 ) {
+
 
 
     /// Alpha animation for the microphone

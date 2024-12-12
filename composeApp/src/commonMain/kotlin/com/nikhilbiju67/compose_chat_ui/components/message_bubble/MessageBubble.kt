@@ -58,16 +58,6 @@ fun MessageBubble(
     bubbleStyle: BubbleStyle,
     messageBubbleStyle: MessageBubbleStyle
 ) {
-
-//    LaunchedEffect(isVisible) {
-//
-//        if (!isVisible) {
-//            delay(500)
-//            isVisible = true
-//        }
-//
-//    }
-
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (isSender) Arrangement.End else Arrangement.Start

@@ -4,89 +4,80 @@ import kotlinx.browser.document
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import models.AudioMessage
+import models.MediaStatus
 import org.w3c.dom.HTMLAudioElement
 
 actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
     private val audioElement = document.createElement("audio") as HTMLAudioElement
-    private val mediaItems = mutableListOf<String>()
-    private var currentItemIndex = -1
-
-    actual fun play() {
-        setupListeners()
-        if (currentItemIndex == -1 && mediaItems.isNotEmpty()) {
-            play(0)
-        } else {
-            audioElement.play()
-            playerState.isPlaying = true
+    private var currentUrl: String? = null
+    private val _mediaStatus = MutableStateFlow(MediaStatus())
+    actual val mediaStatus: Flow<MediaStatus> get() = _mediaStatus.asStateFlow()
+    actual fun play(message: AudioMessage) {
+        val url = message.effectiveAudioSource
+        if(url == null) {
+            return
         }
+        setupListeners()
+        if (url != currentUrl) {
+            currentUrl = url
+            audioElement.src = if (isLocalFile(url)) "file://$url" else url
+        }
+        audioElement.play()
+        playerState.isPlaying = true
     }
+
     private fun setupListeners() {
         audioElement.addEventListener("timeupdate", {
-            _audioProgress.value = audioElement.currentTime
             playerState.currentTime = audioElement.currentTime.toLong()
             playerState.duration = audioElement.duration.toLong()
+            //get progress percentage
+            val progress = (audioElement.currentTime / audioElement.duration)
+            _mediaStatus.update {
+                it.copy(
+                    isPlaying = playerState.isPlaying,
+                    audioProgress = progress.toFloat(),
+                    playerState = playerState
+                )
+            }
+
         })
 
         audioElement.addEventListener("ended", {
-            next()
+            playerState.isPlaying = false
+            currentUrl = null
         })
 
         audioElement.addEventListener("error", {
-//            playerState.error = "An error occurred during playback."
+            playerState.isPlaying = false
+            // Handle playback error if needed
         })
     }
+
     actual fun pause() {
         audioElement.pause()
         playerState.isPlaying = false
-    }
-
-    actual fun next() {
-        if (currentItemIndex + 1 < mediaItems.size) {
-            play(currentItemIndex + 1)
-        }
-    }
-
-    actual fun prev() {
-        if (currentItemIndex > 0) {
-            play(currentItemIndex - 1)
-        } else {
-            seekTo(0.0)
-        }
-    }
-
-    actual fun play(songIndex: Int) {
-        if (songIndex in mediaItems.indices) {
-            currentItemIndex = songIndex
-            audioElement.src = mediaItems[songIndex]
-            audioElement.play()
-            playerState.isPlaying = true
-            playerState.currentItemIndex = songIndex
-        }
     }
 
     actual fun seekTo(time: Double) {
         audioElement.currentTime = time
     }
 
-    actual fun addSongsUrls(songsUrl: List<String>) {
-        mediaItems.clear()
-        mediaItems.addAll(songsUrl)
-        if (mediaItems.isNotEmpty()) {
-            play(0)
-        }
-    }
-
     actual fun cleanUp() {
         audioElement.pause()
         audioElement.src = ""
-        _audioProgress.value = 0.0
+        currentUrl = null
+    }
+
+    private fun isLocalFile(path: String): Boolean {
+        // This implementation assumes you have a way to determine if a path is local
+        return path.startsWith("/") || path.startsWith("file://")
     }
 
     actual fun playerState(): PlayerState {
         return playerState
     }
 
-    private val _audioProgress = MutableStateFlow(0.0)
-    actual val audioProgress: Flow<Double> get() = _audioProgress.asStateFlow()
 
 }

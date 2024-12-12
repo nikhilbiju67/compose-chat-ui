@@ -7,6 +7,9 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import models.AudioMessage
+import models.MediaStatus
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
 import platform.AVFAudio.setActive
@@ -36,24 +39,28 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
-    private val playerItems = mutableListOf<AVPlayerItem>()
     private val avAudioPlayer: AVPlayer = AVPlayer()
-    private var currentItemIndex = -1
     private lateinit var timeObserver: Any
-    private val _audioProgress = MutableStateFlow(0.0)
-    actual val audioProgress: Flow<Double> get() = _audioProgress.asStateFlow()
+    private val _mediaStatus = MutableStateFlow(MediaStatus())
+    actual val mediaStatus: Flow<MediaStatus> get() = _mediaStatus.asStateFlow()
 
     @OptIn(ExperimentalForeignApi::class)
     private val observer: (CValue<CMTime>) -> Unit = { time: CValue<CMTime> ->
-        playerState.isBuffering = avAudioPlayer.currentItem?.isPlaybackLikelyToKeepUp() != true
-        playerState.isPlaying = avAudioPlayer.timeControlStatus == AVPlayerTimeControlStatusPlaying
-        val rawTime: Float64 = CMTimeGetSeconds(time)
-        val parsedTime = rawTime.toDuration(DurationUnit.SECONDS).inWholeSeconds
-        playerState.currentTime = parsedTime
-        _audioProgress.value = parsedTime.toDouble()
-        if (avAudioPlayer.currentItem != null) {
-            val cmTime = CMTimeGetSeconds(avAudioPlayer.currentItem!!.duration)
-            playerState.duration = if (cmTime.isNaN()) 0 else cmTime.toDuration(DurationUnit.SECONDS).inWholeSeconds
+        val currentTimeInSeconds = CMTimeGetSeconds(time)
+        val totalDurationInSeconds =
+            avAudioPlayer.currentItem?.duration?.let { CMTimeGetSeconds(it) } ?: 0.0
+
+        if (!totalDurationInSeconds.isNaN() && totalDurationInSeconds > 0) {
+            val progress = (currentTimeInSeconds / totalDurationInSeconds).toFloat()
+            playerState.currentTime = currentTimeInSeconds.toLong()
+            playerState.duration = totalDurationInSeconds.toLong()
+
+            _mediaStatus.update {
+                it.copy(
+                    audioProgress = progress,
+                    isPlaying = playerState.isPlaying
+                )
+            }
         }
     }
 
@@ -62,26 +69,28 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         playerState.isPlaying = avAudioPlayer.timeControlStatus == AVPlayerTimeControlStatusPlaying
     }
 
-    actual fun play() {
-        if (currentItemIndex == -1) {
-            play(0)
-        } else {
-            avAudioPlayer.play()
-            playerState.isPlaying = true
+    actual fun play(message: AudioMessage) {
+        val url = message.effectiveAudioSource
+        if (url == null) {
+            println("Error: No valid audio source provided.")
+            return
         }
+
+        playerState.isBuffering = true
+
+        stop()
+        startTimeObserver()
+
+        val nsUrl = NSURL.URLWithString(url) ?: throw IllegalArgumentException("Invalid URL")
+        val playItem = AVPlayerItem(uRL = nsUrl)
+        avAudioPlayer.replaceCurrentItemWithPlayerItem(playItem)
+        avAudioPlayer.play()
+        playerState.isPlaying = true
     }
 
     actual fun pause() {
         avAudioPlayer.pause()
         playerState.isPlaying = false
-    }
-
-    actual fun play(songIndex: Int) {
-        playerState.isBuffering = true
-        if (songIndex < playerItems.size) {
-            currentItemIndex = songIndex
-            playWithIndex(currentItemIndex)
-        }
     }
 
     @OptIn(ExperimentalForeignApi::class)
@@ -91,34 +100,6 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         avAudioPlayer.currentItem?.seekToTime(time = cmTime) {
             playerState.isBuffering = false
         }
-    }
-
-    actual fun next() {
-        playerState.canNext = (currentItemIndex + 1) < playerItems.size
-        if (playerState.canNext) {
-            currentItemIndex += 1
-            playWithIndex(currentItemIndex)
-        }
-    }
-
-    actual fun prev() {
-        when {
-            playerState.currentTime > 3 -> seekTo(0.0)
-            else -> {
-                playerState.canPrev = (currentItemIndex - 1) >= 0
-                if (playerState.canPrev) {
-                    currentItemIndex -= 1
-                    playWithIndex(currentItemIndex)
-                }
-            }
-        }
-    }
-
-    actual fun addSongsUrls(songsUrl: List<String>) {
-        val converted = songsUrl.map {
-            NSURL.URLWithString(it)!!
-        }
-        playerItems.addAll(converted.map { AVPlayerItem(uRL = it) })
     }
 
     private fun setUpAudioSession() {
@@ -138,31 +119,41 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
             name = AVPlayerItemDidPlayToEndTimeNotification,
             `object` = avAudioPlayer.currentItem,
             queue = NSOperationQueue.mainQueue,
-            usingBlock = { next() }
+            usingBlock = {
+                playerState.isPlaying = false
+                _mediaStatus.update {
+                    it.copy(
+                        playerState = playerState,
+                        isPlaying = false,
+                        audioProgress = 1f // Set to 100% at the end of playback
+                    )
+                }
+            }
         )
     }
 
     private fun stop() {
         if (::timeObserver.isInitialized) avAudioPlayer.removeTimeObserver(timeObserver)
         avAudioPlayer.pause()
+        _mediaStatus.value = MediaStatus(
+            isPlaying = false,
+            playerState = playerState,
+            audioProgress = 0f
+        )
         avAudioPlayer.currentItem?.seekToTime(CMTimeMakeWithSeconds(0.0, NSEC_PER_SEC.toInt()))
-    }
-
-    private fun playWithIndex(currentItemIndex: Int) {
-        stop()
-        startTimeObserver()
-        playerState.isBuffering = true
-        playerState.currentItemIndex = currentItemIndex
-        val playItem = playerItems[currentItemIndex]
-        avAudioPlayer.replaceCurrentItemWithPlayerItem(playItem)
-        avAudioPlayer.play()
     }
 
     actual fun cleanUp() {
         stop()
+        _mediaStatus.value = MediaStatus(
+            isPlaying = false,
+            audioProgress = 0f,
+            playerState = playerState
+        )
     }
 
     actual fun playerState(): PlayerState {
         return playerState
     }
 }
+

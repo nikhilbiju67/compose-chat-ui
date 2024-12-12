@@ -41,6 +41,10 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nikhilbiju67.compose_chat_ui.audio.AudioRecord
+import com.nikhilbiju67.compose_chat_ui.audio.OutputFormat
+import com.nikhilbiju67.compose_chat_ui.audio.OutputLocation
+import com.nikhilbiju67.compose_chat_ui.audio.RecordConfig
 import com.nikhilbiju67.compose_chat_ui.styles.AttachmentStyle
 import com.nikhilbiju67.compose_chat_ui.styles.InputFieldStyle
 import com.valentinilk.shimmer.LocalShimmerTheme
@@ -53,6 +57,7 @@ import composechatui.composeapp.generated.resources.baseline_send_24
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import models.AudioMessage
 import models.Message
 import models.TextMessage
 import models.User
@@ -136,6 +141,22 @@ fun InputField(
                         audioCancelled = true
                     },
                     isRecording = showRecordingUi,
+                    onStopRecord = {
+                        println("Recorded file path: $it")
+                        onSend(
+                            AudioMessage(
+                                id = Random.nextInt(100000).toString(),
+                                messageContent = it,
+                                localFilePath = it,
+                                messageReactions = emptyList(),
+                                replyingToMessageId = null,
+                                sentBy = loggedInUser,
+                                sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
+                                sentTo = emptyList()
+                            )
+                        )
+                    },
+
                     backGroundColor = inputFieldStyle.recordButtonBackGroundColor,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
@@ -211,6 +232,7 @@ fun HoldableButton(
     isRecording: Boolean,
     swipeInfoView: (@Composable () -> Unit)? = null,
     swipeInfoModifier: Modifier = Modifier.padding(horizontal = 12.dp),
+    onStopRecord: (String) -> Unit = {},
     content: @Composable () -> Unit     // Button content
 ) {
     val buttonSize = 50.dp
@@ -222,10 +244,29 @@ fun HoldableButton(
     var _isRecording by remember { mutableStateOf(isRecording) }
     var showSwipeInfo by remember { mutableStateOf(false) }
     val yourShimmerTheme = defaultShimmerTheme.copy(rotation = 180f)
-    LaunchedEffect(isRecording) {
+    val recorder = remember { AudioRecord() }
+    var permissionGranted by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isRecording&&permissionGranted) {
         _isRecording = isRecording
         showSwipeInfo = isRecording
         recordingCancelling = false
+        if (isRecording) {
+
+            recorder.startRecording(
+                RecordConfig(
+                    outputLocation = OutputLocation.Cache,
+                    outputFormat = OutputFormat.MPEG_4
+                )
+            )
+        } else {
+            if (recorder.isRecording()) {
+                val value = recorder.stopRecording()
+                onStopRecord(value)
+                println("Recorded file path: $value")
+            }
+
+        }
     }
 
 
@@ -243,61 +284,69 @@ fun HoldableButton(
     CompositionLocalProvider(
         LocalShimmerTheme provides yourShimmerTheme
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = modifier
-                .offset { IntOffset(recordButtonX.roundToInt(), 0) }
-                .pointerInput(Unit)
-                {
-                    awaitPointerEventScope {
-                        while (true) {
+        AudioRecord().RequestMicrophonePermission(onPermissionResult = {
+            permissionGranted = it
 
-                            val event = awaitPointerEvent()
-                            val isDown = event.changes.firstOrNull()?.pressed == true
-                            if (isDown && !recordingCancelling) {
-                                if (!_isRecording) {
-                                    onHold()
-                                } else {
-                                    val change = event.changes.firstOrNull()
-                                    if (change != null && change.positionChange().x < 0 && _isRecording) {
-                                        recordButtonX += change.positionChange().x
-                                        if (recordButtonX < maxDragDistance) {
-                                            recordingCancelling = true
-                                            recordButtonX = 0f
-                                            showSwipeInfo = false
-                                            onSwipeLeft()
 
-                                            //
+        }) { askPermission ->
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = modifier
+                    .offset { IntOffset(recordButtonX.roundToInt(), 0) }
+                    .pointerInput(Unit)
+                    {
+                        awaitPointerEventScope {
+                            while (true) {
+
+                                val event = awaitPointerEvent()
+                                val isDown = event.changes.firstOrNull()?.pressed == true
+                                if (isDown && !recordingCancelling) {
+                                    if (!_isRecording) {
+                                        askPermission()
+                                        onHold()
+                                    } else {
+                                        val change = event.changes.firstOrNull()
+                                        if (change != null && change.positionChange().x < 0 && _isRecording) {
+                                            recordButtonX += change.positionChange().x
+                                            if (recordButtonX < maxDragDistance) {
+                                                recordingCancelling = true
+                                                recordButtonX = 0f
+                                                showSwipeInfo = false
+                                                onSwipeLeft()
+
+                                                //
+                                            }
                                         }
                                     }
-                                }
-                            } else {
-                                recordButtonX = 0f
-                                if (!recordingCancelling) {
-                                    onRelease()
+                                } else {
+                                    recordButtonX = 0f
+                                    if (!recordingCancelling) {
+                                        onRelease()
+                                    }
+
                                 }
 
                             }
-
                         }
                     }
-                }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (showSwipeInfo) if (swipeInfoView != null) swipeInfoView() else Text(
-                    "<< Swipe left to cancel".uppercase(),
-                    modifier = Modifier.padding(end = 12.dp).shimmer(
-                    ),
-                    style = TextStyle(color = Color.White)
-                )
-                Box(
-                    Modifier.size(buttonSize).graphicsLayer(scaleX = sizeScale, scaleY = sizeScale)
-                        .clip(CircleShape)
-                        .background(Color.Red),
-                    contentAlignment = Alignment.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (showSwipeInfo) if (swipeInfoView != null) swipeInfoView() else Text(
+                        "<< Swipe left to cancel".uppercase(),
+                        modifier = Modifier.padding(end = 12.dp).shimmer(
+                        ),
+                        style = TextStyle(color = Color.White)
+                    )
+                    Box(
+                        Modifier.size(buttonSize)
+                            .graphicsLayer(scaleX = sizeScale, scaleY = sizeScale)
+                            .clip(CircleShape)
+                            .background(Color.Red),
+                        contentAlignment = Alignment.Center,
 
-                    ) {
-                    content()
+                        ) {
+                        content()
+                    }
                 }
             }
         }

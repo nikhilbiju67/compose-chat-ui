@@ -190,12 +190,22 @@ private fun LazyListState.reachedBottom(): Boolean {
 }
 
 val messages = listOf(
+
+    AudioMessage(
+        id = "16",
+        sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
+        sentBy = User("2", "Nikhil", ""),
+        sentTo = emptyList(),
+        url = "https://onlinetestcase.com/wp-content/uploads/2023/06/5-MB-MP3.mp3",
+        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
+    ),
     AudioMessage(
         id = "10",
         sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
         sentBy = User("2", "Nikhil", ""),
         sentTo = emptyList(),
-        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/500-KB-MP3.mp3",
+        url = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
+        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
     ),
     TextMessage(
         id = "1",
