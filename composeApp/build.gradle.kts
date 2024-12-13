@@ -72,6 +72,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.kamel.image.default)
             implementation(libs.compose.shimmer)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
         }
         desktopMain.dependencies {
@@ -82,6 +83,7 @@ kotlin {
         }
         wasmJsMain.dependencies{
             implementation("org.jetbrains.kotlinx:kotlinx-browser:0.3")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
         }
 
     }
@@ -116,6 +118,7 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 }
 
 compose.desktop {
