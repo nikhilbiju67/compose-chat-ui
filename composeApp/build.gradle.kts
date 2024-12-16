@@ -63,7 +63,7 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material)
+            implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -72,6 +72,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.kamel.image.default)
             implementation(libs.compose.shimmer)
+            implementation(libs.material.kolor)
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
         }

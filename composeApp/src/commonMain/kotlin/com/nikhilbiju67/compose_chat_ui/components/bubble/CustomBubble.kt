@@ -2,7 +2,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -56,7 +56,7 @@ fun ChatBubbleShape(alignment: BubbleAlignment): Shape {
 fun ChatBubble(
     modifier: Modifier = Modifier,
     alignment: BubbleAlignment,
-    backgroundColor: Color = MaterialTheme.colors.onSurface,
+    backgroundColor: Color = MaterialTheme.colorScheme.onSurface,
     child: @Composable () -> Unit
 ) {
     Box(

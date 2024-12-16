@@ -19,9 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -71,7 +72,7 @@ fun InputField(
     modifier: Modifier = Modifier,
     inputFieldStyle: InputFieldStyle,
     loggedInUser: User,
-    attachmentOptions: AttachmentStyle
+    attachmentStyle: AttachmentStyle
 ) {
     val buttonSize = 50
     var showRecordingUi by remember { mutableStateOf(false) }
@@ -125,7 +126,8 @@ fun InputField(
                         onChange = { inputString = it },
                         onAttachmentClick = { showAttachmentSheet = !showAttachmentSheet },
                         inputFieldStyle = inputFieldStyle,
-                        modifier = Modifier
+                        modifier = Modifier,
+                        attachmentStyle = attachmentStyle
                     )
                 }
             }
@@ -133,7 +135,10 @@ fun InputField(
             /// Display hold-to-record button if input is empty, otherwise show send button
             if (inputString.isEmpty()) {
                 HoldableButton(
-                    onHold = { showRecordingUi = true },
+                    onHold = {
+                        audioCancelled = false
+                        showRecordingUi = true
+                    },
                     onRelease = {
                         showRecordingUi = false
                     },
@@ -159,7 +164,8 @@ fun InputField(
 
                     backGroundColor = inputFieldStyle.recordButtonBackGroundColor,
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
+                        .align(Alignment.CenterEnd),
+                    iconColor = inputFieldStyle.recordButtonIconColor,
                 ) {
                     Image(
                         modifier = Modifier
@@ -185,7 +191,7 @@ fun InputField(
                         inputString = ""
                     },
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = inputFieldStyle.recordButtonBackGroundColor
+                        containerColor = inputFieldStyle.recordButtonBackGroundColor
                     ),
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
@@ -211,7 +217,7 @@ fun InputField(
         ) {
             AttachmentSheetContent(
                 showAttachmentSheet,
-                attachmentOptions,
+                attachmentStyle,
                 onAttachmentHide = {
                     showAttachmentSheet = false
                 }
@@ -230,6 +236,7 @@ fun HoldableButton(
     onRelease: () -> Unit,              // Stops recording     // Flag to show recording UI
     backGroundColor: Color,
     isRecording: Boolean,
+    iconColor: Color,
     swipeInfoView: (@Composable () -> Unit)? = null,
     swipeInfoModifier: Modifier = Modifier.padding(horizontal = 12.dp),
     onStopRecord: (String) -> Unit = {},
@@ -247,7 +254,7 @@ fun HoldableButton(
     val recorder = remember { AudioRecord() }
     var permissionGranted by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isRecording&&permissionGranted) {
+    LaunchedEffect(isRecording && permissionGranted) {
         _isRecording = isRecording
         showSwipeInfo = isRecording
         recordingCancelling = false
@@ -260,7 +267,7 @@ fun HoldableButton(
                 )
             )
         } else {
-            if (recorder.isRecording()) {
+            if (recorder.isRecording() && !recordingCancelling) {
                 val value = recorder.stopRecording()
                 onStopRecord(value)
                 println("Recorded file path: $value")
@@ -341,7 +348,7 @@ fun HoldableButton(
                         Modifier.size(buttonSize)
                             .graphicsLayer(scaleX = sizeScale, scaleY = sizeScale)
                             .clip(CircleShape)
-                            .background(Color.Red),
+                            .background(backGroundColor),
                         contentAlignment = Alignment.Center,
 
                         ) {

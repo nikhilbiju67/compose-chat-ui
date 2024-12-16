@@ -9,8 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -82,7 +81,7 @@ fun ChatView(
             },
             modifier = Modifier.align(Alignment.BottomCenter),
             inputFieldStyle = chatStyle.inputFieldStyle,
-            attachmentOptions = chatStyle.attachmentStyle,
+            attachmentStyle = chatStyle.attachmentStyle,
             loggedInUser = messageData.loggedInUser,
         )
 
@@ -103,7 +102,6 @@ fun getBubbleStyle(
 }
 
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 internal fun <T> EndlessLazyColumn(
     modifier: Modifier = Modifier,

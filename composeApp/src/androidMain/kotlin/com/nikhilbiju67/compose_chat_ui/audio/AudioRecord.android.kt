@@ -11,6 +11,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 val MICROPHONE_PERMISSION_REQUEST_CODE = 101
 
@@ -19,7 +22,7 @@ actual class AudioRecord {
     private var recorder: MediaRecorder? = null
     private var output: String? = null
     private var recordingState: RecordingState = RecordingState.IDLE
-    internal actual fun stopRecording(): String {
+    actual internal suspend fun stopRecording(): String {
         recordingState = RecordingState.IDLE
         try {
             recorder?.apply {
@@ -60,7 +63,9 @@ actual class AudioRecord {
             }
 
             setOnErrorListener { _, _, _ ->
-                stopRecording()
+                CoroutineScope(Dispatchers.Main).launch {
+                    stopRecording()
+                }
             }
 
             start()

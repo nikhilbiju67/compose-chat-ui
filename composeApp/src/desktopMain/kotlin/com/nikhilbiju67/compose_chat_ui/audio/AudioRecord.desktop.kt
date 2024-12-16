@@ -78,7 +78,7 @@ actual class AudioRecord {
         }
     }
 
-    actual internal fun stopRecording(): String {
+    actual internal suspend fun stopRecording(): String {
         audioLine?.stop()
         audioLine?.close()
         isRecording = false

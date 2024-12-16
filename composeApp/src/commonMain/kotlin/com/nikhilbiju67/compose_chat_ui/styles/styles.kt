@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,6 +17,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nikhilbiju67.compose_chat_ui.components.message_bubble.incomingBubbleState
 import com.smarttoolfactory.bubble.BubbleShadow
 import com.smarttoolfactory.bubble.BubbleState
 import com.nikhilbiju67.compose_chat_ui.components.message_bubble.outgoingBubbleState
@@ -47,7 +48,9 @@ data class ChatStyle(
 data class AttachmentStyle(
     val backGroundColor: Color,
     val attachmentOptions: List<AttachmentOption>,
-    val modifier: Modifier? = Modifier
+    val modifier: Modifier? = Modifier,
+    val attachmentIconBackGroundColor: Color,
+    val attachmentIconColor: Color
 )
 
 data class AttachmentOption(
@@ -76,7 +79,8 @@ data class InputFieldStyle(
     val recordButtonBackGroundColor: Color,
     val recordingText: String,
     val attachmentButtonBackGroundColor: Color,
-    val bottomMargin: Dp
+    val bottomMargin: Dp,
+    val recordButtonIconColor: Color
 )
 
 data class UserSpecificBubbleStyle(
@@ -84,7 +88,7 @@ data class UserSpecificBubbleStyle(
     val bubbleStyle: BubbleStyle
 )
 
-data class   BubbleStyle(
+data class BubbleStyle(
     val bubbleState: BubbleState,
     val shadow: BubbleShadow,
     val borderStroke: BorderStroke?,
@@ -101,7 +105,7 @@ data class ImageMessageStyle(
     val contentScale: ContentScale
 )
 
-var defaultBubbleStyle=MessageBubbleStyle(
+var defaultBubbleStyle = MessageBubbleStyle(
     outGoingBubbleStyle = BubbleStyle(
         modifier = Modifier.padding(8.dp),
         borderStroke = null,
@@ -124,7 +128,7 @@ var defaultBubbleStyle=MessageBubbleStyle(
         modifier = Modifier.padding(8.dp),
         borderStroke = null,
         textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
-        bubbleState = outgoingBubbleState,
+        bubbleState = incomingBubbleState,
         color = Color("#213040".toColorInt()),
         shadow = BubbleShadow(
             spotColor = Color.Black,
@@ -255,7 +259,9 @@ val defaultChatStyle = ChatStyle(
     ),
     attachmentStyle = AttachmentStyle(
         backGroundColor = Color("#18222D".toColorInt()),
-        attachmentOptions = defaultAttachmentOptions
+        attachmentOptions = defaultAttachmentOptions,
+        attachmentIconColor = Color.White,
+        attachmentIconBackGroundColor = Color("#18222D".toColorInt())
     ),
     inputFieldStyle = InputFieldStyle(
         backGroundColor = Color(0xff18222D),
@@ -266,6 +272,7 @@ val defaultChatStyle = ChatStyle(
         shadow = Shadow(),
         recordingText = "Recording your voice",
         textFieldBackGroundColor = Color(0xff1f2b3c),
+        recordButtonIconColor = Color.White
     ),
     messageBubbleStyle = defaultBubbleStyle,
 )
