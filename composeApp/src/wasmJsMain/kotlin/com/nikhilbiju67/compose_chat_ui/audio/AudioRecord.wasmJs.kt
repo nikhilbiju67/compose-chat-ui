@@ -1,16 +1,12 @@
 package com.nikhilbiju67.compose_chat_ui.audio
 
-import kotlinx.coroutines.await
 import androidx.compose.runtime.Composable
 import com.nikhilbiju67.compose_chat_ui.audio.audioRecorderJS.consoleLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
+import kotlinx.coroutines.await
 import kotlinx.coroutines.launch
-import org.w3c.dom.url.URL
-import org.w3c.files.Blob
 import kotlin.js.Promise
 
 // External interface for our JavaScript wrapper
