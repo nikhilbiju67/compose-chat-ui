@@ -50,13 +50,10 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
 
 ## Future Plans
 
-- **Enhanced Audio Features**:
-  - Completion of the record functionality.
-  - Support for advanced audio formats.
-- **Customizable Themes**:
-  - Add support for user-customizable themes and UI elements.
 - **Improved Platform Integration**:
   - Leverage native features on iOS and Android for a richer experience.
+- **Add more message types**:
+  - Add more message types like contacts,location,docs etc.
 
 ## Contribution
 
