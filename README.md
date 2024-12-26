@@ -17,6 +17,8 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
   - Currently under development.
   - Will support audio recording across supported platforms when complete.
 
+live demo - https://nikhilbiju67.github.io/compose-chat-ui/
+
 
 
 
