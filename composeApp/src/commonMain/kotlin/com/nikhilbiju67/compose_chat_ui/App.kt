@@ -314,13 +314,23 @@ fun AudioMessage(
                 contentDescription = null
             )
         }
-        LinearProgressIndicator(
-            progress = { if (audioPlaying) playerState.progress?.toFloat() ?: 0f else 0f },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            color = tintColor,
-            trackColor = tintColor.copy(
-                alpha = 0.5f
+        Column {
+            LinearProgressIndicator(
+                progress = { if (audioPlaying) playerState.progress ?: 0f else 0f },
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                color = tintColor,
+                trackColor = tintColor.copy(
+                    alpha = 0.5f
+                )
             )
-        )
+            Text(
+
+                if (!audioPlaying) "0.0" else "${playerState.currentTime.toString() ?: "0"}s / ${playerState.duration ?: "0"}s",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = tintColor
+                ),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
