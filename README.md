@@ -22,8 +22,7 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
 
 ## Tech Stack
 
-- **Jetpack Compose Multiplatform**: For building the user interface.
-- **Kotlin Multiplatform**: For shared business logic across platforms.
+- ** Compose Multiplatform**: For building the user interface.
 - **Audio Frameworks**:
   - Platform-specific libraries for audio playback and recording.
   - Integration with VLC for desktop audio playback.
