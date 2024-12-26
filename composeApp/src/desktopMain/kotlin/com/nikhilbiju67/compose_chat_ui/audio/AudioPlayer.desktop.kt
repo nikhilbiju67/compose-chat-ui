@@ -1,8 +1,6 @@
 package com.nikhilbiju67.compose_chat_ui.audio
 
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import models.AudioMessage
 import models.MediaStatus
@@ -18,7 +16,6 @@ actual class AudioPlayer actual constructor(
     ) {
     private var mediaPlayer: MediaPlayer? = null
     private val _mediaStatus = MutableStateFlow(MediaStatus())
-    actual val mediaStatus: Flow<MediaStatus> get() = _mediaStatus.asStateFlow()
     var currentlyPlaying: AudioMessage? = null
 
     init {
@@ -119,9 +116,6 @@ actual class AudioPlayer actual constructor(
         playerState.isPlaying = false
     }
 
-    actual fun seekTo(time: Double) {
-        mediaPlayer?.controls()?.setTime((time * 1000).toLong()) // Convert seconds to ms
-    }
 
     actual fun playerState(): PlayerState {
         return playerState

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nikhilbiju67.compose_chat_ui.components.TypingIndicator
 import com.nikhilbiju67.compose_chat_ui.components.input_components.InputField
 import com.nikhilbiju67.compose_chat_ui.components.message_bubble.MessageBubble
 import com.nikhilbiju67.compose_chat_ui.styles.BubbleStyle
@@ -40,6 +42,7 @@ fun ChatView(
     messageData: MessageData,
     onSend: (Message) -> Unit,
     modifier: Modifier,
+    typing: Boolean,
     chatStyle: ChatStyle = defaultChatStyle
 ) {
 
@@ -79,6 +82,7 @@ fun ChatView(
             loadMore = {
                 println("Load more")
             },
+            typing = typing,
 
             /// Key for each list item to improve performance and stability
             listItemKey = {
@@ -126,7 +130,8 @@ internal fun <T> EndlessLazyColumn(
     listItemKey: (T) -> String,
     itemContent: @Composable (Modifier, T) -> Unit,
     loadingItem: @Composable () -> Unit,
-    loadMore: () -> Unit
+    loadMore: () -> Unit,
+    typing: Boolean
 ) {
 
     /// Scroll to the top when new items are added
@@ -155,6 +160,11 @@ internal fun <T> EndlessLazyColumn(
         /// Spacer at the top for additional padding
         item {
             Box(modifier = Modifier.height(64.dp)) {}
+        }
+        if (typing) item {
+            TypingIndicator(
+                Modifier.padding(8.dp),
+            )
         }
 
         /// Display each item with animation and unique key
@@ -311,5 +321,11 @@ val dummyData: MessageData = MessageData(
         name = "Alan",
 
         ),
-    receivers = emptyList()
+    receivers = listOf(
+        User(
+            "3",
+            name = "Alex",
+
+            )
+    )
 )

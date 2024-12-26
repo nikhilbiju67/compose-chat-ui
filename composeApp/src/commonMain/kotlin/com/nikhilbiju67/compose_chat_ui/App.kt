@@ -29,10 +29,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.materialkolor.DynamicMaterialTheme
 import com.nikhilbiju67.compose_chat_ui.audio.AudioPlayer
 import com.nikhilbiju67.compose_chat_ui.audio.PlayerState
+import com.nikhilbiju67.compose_chat_ui.components.Utils.generateRandomStringMessage
 import com.nikhilbiju67.compose_chat_ui.styles.AttachmentStyle
 import com.nikhilbiju67.compose_chat_ui.styles.defaultAttachmentOptions
 import com.nikhilbiju67.compose_chat_ui.styles.defaultBubbleStyle
@@ -57,25 +58,33 @@ import composechatui.composeapp.generated.resources.dark_mode_24px
 import composechatui.composeapp.generated.resources.palette_24px
 import composechatui.composeapp.generated.resources.pause_circle_24px
 import composechatui.composeapp.generated.resources.play_circle_24px
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import models.AudioMessage
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 
+/// Main Composable Function representing the chat application UI.
 @Composable
 @Preview
 fun App() {
+    /// State variables for chat messages, player state, and UI customization.
+    var messages by remember { mutableStateOf(dummyData) }
+    var currentPlayerState by remember { mutableStateOf(PlayerState()) }
+    var typing by remember { mutableStateOf(false) }
+    var seedColor by remember { mutableStateOf(Color.Red) }
+    var isDarkTheme by remember { mutableStateOf(false) }
+    var currentlyPlaying by remember { mutableStateOf<AudioMessage?>(null) }
 
-    var messages by remember {
-        mutableStateOf(dummyData)
-    }
+    /// Coroutine scope for asynchronous operations.
+    val scope = rememberCoroutineScope()
 
-    var currentPlayerState by remember {
-        mutableStateOf(PlayerState())
-    }
+    /// AudioPlayer instance to handle audio playback.
     val audioPlayer = remember {
-        AudioPlayer(currentPlayerState, onProgressCallback = { playerState ->
-
+        AudioPlayer(currentPlayerState) { playerState ->
             currentPlayerState = playerState.copy(
                 isPlaying = playerState.isPlaying,
                 isBuffering = playerState.isBuffering,
@@ -83,50 +92,33 @@ fun App() {
                 duration = playerState.duration,
                 currentlyPlayingId = playerState.currentlyPlayingId
             )
-
-        })
+        }
     }
-    var seedColor by remember {
-        mutableStateOf(Color.Red)
-    }
-    var isDarkTheme by remember { mutableStateOf(false) }
 
-    var currentlyPlaying by remember { mutableStateOf<AudioMessage?>(null) }
+    /// Dynamic Material Theme for customizable colors and theme.
     DynamicMaterialTheme(
         seedColor = seedColor,
         animate = true,
         useDarkTheme = isDarkTheme
     ) {
-        var showContent by remember { mutableStateOf(false) }
         Scaffold(
-            modifier = Modifier.background(MaterialTheme.colorScheme.background)
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.background)
                 .windowInsetsPadding(WindowInsets.safeDrawing),
             topBar = {
                 TopAppBar(
-
-                    Modifier.background(
-                        seedColor
-                    ),
-                    onDarkThemeSelect = {
-                        isDarkTheme = it
-                    },
+                    modifier = Modifier.background(seedColor),
+                    onDarkThemeSelect = { isDarkTheme = it },
+                    onColorSelect = { seedColor = it },
                     selectedColor = seedColor,
-                    isDarkTheme = isDarkTheme,
-
-                    showContent = showContent, onColorSelect = {
-                        seedColor = it
-                    })
-
+                    isDarkTheme = isDarkTheme
+                )
             }
         ) {
-
+            /// Chat view with message handling.
             ChatView(
-                messages,
-                onSend = {
-                    messages = messages.copy(messages = listOf(it) + messages.messages)
-                    print(messages.toString())
-                },
-                modifier = Modifier.background(Color.White),
+                typing = typing,
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                 chatStyle = defaultChatStyle.copy(
                     containerStyle = defaultChatStyle.containerStyle.copy(
                         backGroundColor = MaterialTheme.colorScheme.surface
@@ -161,7 +153,8 @@ fun App() {
                                 alignment = ArrowAlignment.LeftBottom,
 
 
-                                )
+                                ),
+
                         ),
 
                         outGoingBubbleStyle = defaultBubbleStyle.outGoingBubbleStyle.copy(
@@ -195,33 +188,42 @@ fun App() {
                                     audioPlayer.pause()
                                 })
                         }
-                    )
-
-                )
-
+                    )),
+                onSend = { message ->
+                    messages = messages.copy(messages = listOf(message) + messages.messages)
+                    scope.launch {
+                        typing = true
+                        withContext(Dispatchers.Default) { delay(2000) }
+                        val generatedMessage = dummyData.receivers.firstOrNull()?.let {
+                            generateRandomStringMessage(it)
+                        }
+                        typing = false
+                        generatedMessage?.let {
+                            messages = messages.copy(messages = listOf(it) + messages.messages)
+                        }
+                    }
+                },
+                messageData = messages
             )
         }
-
     }
 }
 
+/// Top AppBar with theme and color customization options.
 @Composable
 private fun TopAppBar(
     modifier: Modifier,
-    showContent: Boolean,
     onColorSelect: (Color) -> Unit,
     onDarkThemeSelect: (Boolean) -> Unit,
     selectedColor: Color,
-    isDarkTheme: Boolean,
+    isDarkTheme: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
-
     val height by animateDpAsState(targetValue = if (expanded) 150.dp else 50.dp)
+
     Column(
-        modifier = modifier.shadow(
-            elevation = 4.dp,
-            shape = RoundedCornerShape(0.dp)
-        )
+        modifier = modifier
+            .shadow(elevation = 4.dp, shape = RoundedCornerShape(0.dp))
             .fillMaxWidth()
             .height(height)
             .background(MaterialTheme.colorScheme.surface)
@@ -241,70 +243,54 @@ private fun TopAppBar(
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { expanded = !expanded }) {
                 Icon(
-                    painter = painterResource(
-                        Res.drawable.palette_24px
-                    ),
+                    painter = painterResource(Res.drawable.palette_24px),
                     tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = null
                 )
             }
-            IconButton(onClick = {
-                onDarkThemeSelect(!isDarkTheme)
-            }) {
+            IconButton(onClick = { onDarkThemeSelect(!isDarkTheme) }) {
                 Icon(
-                    painter = painterResource(
-                        Res.drawable.dark_mode_24px
-                    ),
+                    painter = painterResource(Res.drawable.dark_mode_24px),
                     tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = null
                 )
             }
-
         }
-
         if (expanded) {
-            val colors = listOf(
-                Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Cyan, Color.Magenta,
-                Color.Gray, Color.Black, Color.White, Color.LightGray, Color.DarkGray,
-                Color(0xFFFFA500), Color(0xFF800080), Color(0xFF00FF00), Color(0xFF008000),
-                Color(0xFF0000FF), Color(0xFF800000), Color(0xFF808000), Color(0xFFFF0000),
-                Color(0xFF00FFFF)
-            )
-
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                items(colors.size) { index ->
-                    val color = colors[index]
-                    val selected = selectedColor.toArgb() == color.toArgb()
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(color = color) // Apply the color as the background
-                            .then(
-                                if (selected) Modifier.border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(12.dp) // Match the shape of the Box
-                                ) else Modifier
-                            )
-                            .clickable {
-                                expanded = false
-                                onColorSelect(color)
-                            }
-                    )
-
-                }
-            }
+            ColorPicker(selectedColor, onColorSelect)
         }
     }
 }
 
+/// A LazyRow for selecting a color theme.
+@Composable
+fun ColorPicker(selectedColor: Color, onColorSelect: (Color) -> Unit) {
+    val colors = listOf(
+        Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Cyan, Color.Magenta,
+        Color.Gray, Color.Black, Color.White
+    )
+    LazyRow(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        items(colors.size) { index ->
+            val color = colors[index]
+            val selected = selectedColor.toArgb() == color.toArgb()
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(color)
+                    .border(
+                        width = if (selected) 2.dp else 0.dp,
+                        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onColorSelect(color) }
+            )
+        }
+    }
+}
 
+/// Audio message bubble UI.
 @Composable
 fun AudioMessage(
     audioMessage: AudioMessage,
@@ -313,60 +299,28 @@ fun AudioMessage(
     isOutGoing: Boolean,
     playerState: PlayerState
 ) {
-    val audioPlaying by derivedStateOf {
-        playerState.isPlaying == true && playerState.currentlyPlayingId == audioMessage.id
-    }
-    var tintColor =
+    val audioPlaying = playerState.isPlaying && playerState.currentlyPlayingId == audioMessage.id
+    val tintColor =
         if (isOutGoing) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(end = 24.dp)
-            .widthIn(300.dp)
+        modifier = Modifier.padding(end = 24.dp).widthIn(300.dp)
     ) {
-        IconButton(
-
-            modifier = Modifier.size(54.dp),
-            onClick = {
-                if (audioPlaying) {
-                    onPauseAudio()
-                } else {
-                    (audioMessage.effectiveAudioSource)?.let {
-                        onPlayAudio()
-                    }
-                }
-            }) {
+        IconButton(onClick = { if (audioPlaying) onPauseAudio() else onPlayAudio() }) {
             Icon(
-                modifier = Modifier.size(54.dp),
                 painter = painterResource(if (audioPlaying) Res.drawable.pause_circle_24px else Res.drawable.play_circle_24px),
-                contentDescription = null,
-                tint = tintColor
+                tint = tintColor,
+                contentDescription = null
             )
         }
-
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Spacer(Modifier.weight(1f))
-            LinearProgressIndicator(
-                progress = {
-                    if (audioPlaying) ((playerState.progress ?: 0).toFloat()) else 0f
-                },
-                modifier = Modifier.padding(top = 24.dp).fillMaxWidth(),
-                color = tintColor,
-                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        LinearProgressIndicator(
+            progress = { if (audioPlaying) playerState.progress?.toFloat() ?: 0f else 0f },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            color = tintColor,
+            trackColor = tintColor.copy(
+                alpha = 0.5f
             )
-            Text(
-
-                if (!audioPlaying) "0.0" else "${playerState.currentTime.toString() ?: "0"}s / ${playerState.duration ?: "0"}s",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = tintColor
-                ),
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-        }
+        )
     }
-
 }
