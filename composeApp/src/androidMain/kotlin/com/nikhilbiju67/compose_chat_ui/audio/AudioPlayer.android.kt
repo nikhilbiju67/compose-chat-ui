@@ -8,18 +8,20 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import models.AudioMessage
+import java.io.File
 
-actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
-    private var mediaPlayer :ExoPlayer =  ExoPlayer.Builder(ChatAndroidApp.appContext).build()
+actual class AudioPlayer actual constructor(
+    private val playerState: PlayerState,
+    private val onProgressCallback: (PlayerState) -> Unit
+) {
+    private var mediaPlayer: ExoPlayer = ExoPlayer.Builder(ChatAndroidApp.appContext).build()
     private val mediaItems = mutableListOf<MediaItem>()
     private var currentItemIndex = -1
-
-    private val _audioProgress = MutableStateFlow(0.0)
-    actual val audioProgress: Flow<Double> get() = _audioProgress.asStateFlow()
+    private val _playerState = MutableStateFlow(playerState)
+    var currentlyPlaying: AudioMessage? = null
 
     private var progressJob: Job? = null
 
@@ -27,17 +29,22 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         override fun onPlaybackStateChanged(playbackState: Int) {
             when (playbackState) {
                 Player.STATE_IDLE -> {}
-                Player.STATE_BUFFERING -> playerState.isBuffering = true
-                Player.STATE_ENDED -> if (playerState.isPlaying) next()
+                Player.STATE_BUFFERING -> {
+                    playerState.isBuffering = true
+                    updateMediaStatus()
+                }
+
                 Player.STATE_READY -> {
                     playerState.isBuffering = false
-                    playerState.duration = mediaPlayer.duration / 1000
+                    playerState.duration = (mediaPlayer.duration / 1000).toInt()
+                    updateMediaStatus()
                 }
             }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             playerState.isPlaying = isPlaying
+            updateMediaStatus()
             if (isPlaying) startProgressUpdates() else stopProgressUpdates()
         }
     }
@@ -46,54 +53,31 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         mediaPlayer.addListener(listener)
     }
 
-    actual fun play() {
-        if (currentItemIndex == -1) {
-            play(0)
-        } else {
-            mediaPlayer.play()
+    actual fun play(message: AudioMessage) {
+        var url = message.effectiveAudioSource
+        if (url == null) {
+            return
         }
+        val mediaItem = if (isLocalFile(url)) {
+            MediaItem.fromUri("file://$url")
+        } else {
+            MediaItem.fromUri(url)
+        }
+        currentlyPlaying = message
+
+        mediaPlayer.setMediaItem(mediaItem)
+        mediaPlayer.prepare()
+        mediaPlayer.play()
+
+        playerState.isPlaying = true
+        playerState.duration = (mediaPlayer.duration / 1000).toInt()
+        updateMediaStatus()
     }
 
     actual fun pause() {
         mediaPlayer.pause()
-    }
-
-    actual fun addSongsUrls(songsUrl: List<String>) {
-        mediaItems += songsUrl.map { MediaItem.fromUri(it) }
-        mediaPlayer.prepare()
-    }
-
-    actual fun next() {
-        playerState.canNext = (currentItemIndex + 1) < mediaItems.size
-        if (playerState.canNext) {
-            currentItemIndex += 1
-            playWithIndex(currentItemIndex)
-        }
-    }
-
-    actual fun prev() {
-        when {
-            playerState.currentTime > 3 -> seekTo(0.0)
-            else -> {
-                playerState.canPrev = (currentItemIndex - 1) >= 0
-                if (playerState.canPrev) {
-                    currentItemIndex -= 1
-                    playWithIndex(currentItemIndex)
-                }
-            }
-        }
-    }
-
-    actual fun play(songIndex: Int) {
-        if (songIndex < mediaItems.size) {
-            currentItemIndex = songIndex
-            playWithIndex(currentItemIndex)
-        }
-    }
-
-    actual fun seekTo(time: Double) {
-        val seekTime = time * 1000
-        mediaPlayer.seekTo(seekTime.toLong())
+        playerState.isPlaying = false
+        updateMediaStatus()
     }
 
     actual fun cleanUp() {
@@ -102,21 +86,22 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         stopProgressUpdates()
     }
 
-    private fun playWithIndex(index: Int) {
-        playerState.currentItemIndex = index
-        val playItem = mediaItems[index]
-        mediaPlayer.setMediaItem(playItem)
-        mediaPlayer.play()
-    }
 
     private fun startProgressUpdates() {
         stopProgressUpdates()
         progressJob = CoroutineScope(Dispatchers.Main).launch {
             while (playerState.isPlaying) {
-                _audioProgress.value = mediaPlayer.currentPosition / 1000.0
-                playerState.currentTime = _audioProgress.value.toLong()
-                playerState.duration = mediaPlayer.duration / 1000
-                delay(1000)
+                val progressInPercentage =
+                    mediaPlayer.currentPosition.toFloat() / mediaPlayer.duration.toFloat()
+                _playerState.value = _playerState.value.copy(
+                    currentTime = (mediaPlayer.currentPosition / 1000).toInt(),
+                    currentlyPlayingId = currentlyPlaying?.id,
+                    isPlaying = playerState.isPlaying,
+                    isBuffering = playerState.isBuffering,
+                    duration = playerState.duration
+                )
+                onProgressCallback(_playerState.value)
+                delay(10)
             }
         }
     }
@@ -126,7 +111,24 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         progressJob = null
     }
 
+    private fun isLocalFile(path: String): Boolean {
+        return File(path).exists()
+    }
+
     actual fun playerState(): PlayerState {
         return playerState
     }
+
+    private fun updateMediaStatus() {
+       _playerState.value = _playerState.value.copy(
+            currentTime = (mediaPlayer.currentPosition / 1000).toInt(),
+            currentlyPlayingId = currentlyPlaying?.id,
+            isPlaying = playerState.isPlaying,
+            isBuffering = playerState.isBuffering,
+            duration = playerState.duration
+        )
+        onProgressCallback(playerState)
+    }
 }
+
+

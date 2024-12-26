@@ -1,5 +1,4 @@
 package com.nikhilbiju67.compose_chat_ui.components.input_components
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -9,8 +8,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,9 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +39,10 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nikhilbiju67.compose_chat_ui.audio.AudioRecord
+import com.nikhilbiju67.compose_chat_ui.audio.OutputFormat
+import com.nikhilbiju67.compose_chat_ui.audio.OutputLocation
+import com.nikhilbiju67.compose_chat_ui.audio.RecordConfig
 import com.nikhilbiju67.compose_chat_ui.styles.AttachmentStyle
 import com.nikhilbiju67.compose_chat_ui.styles.InputFieldStyle
 import com.valentinilk.shimmer.LocalShimmerTheme
@@ -50,9 +52,12 @@ import components.input_components.TextInputField
 import composechatui.composeapp.generated.resources.Res
 import composechatui.composeapp.generated.resources.baseline_mic_24
 import composechatui.composeapp.generated.resources.baseline_send_24
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import models.AudioMessage
 import models.Message
 import models.TextMessage
 import models.User
@@ -66,7 +71,7 @@ fun InputField(
     modifier: Modifier = Modifier,
     inputFieldStyle: InputFieldStyle,
     loggedInUser: User,
-    attachmentOptions: AttachmentStyle
+    attachmentStyle: AttachmentStyle
 ) {
     val buttonSize = 50
     var showRecordingUi by remember { mutableStateOf(false) }
@@ -74,6 +79,7 @@ fun InputField(
     var showAttachmentSheet by remember { mutableStateOf(false) }
     val attachmentHeight by animateFloatAsState(if (showAttachmentSheet) 300f else 0f)
     var audioCancelled by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     Box(modifier = modifier, contentAlignment = Alignment.BottomCenter) {
 
         /// Animated visibility of the attachment sheet
@@ -88,9 +94,7 @@ fun InputField(
         ) {
             Box(
                 contentAlignment = Alignment.CenterStart,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = buttonSize.dp)
+                modifier = Modifier.fillMaxWidth().padding(end = buttonSize.dp)
             ) {
                 /// Show Audio Recording UI when recording
                 androidx.compose.animation.AnimatedVisibility(
@@ -99,13 +103,10 @@ fun InputField(
                     exit = fadeOut(tween(300)),
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
-                    AudioRecordingInput(
-                        cancelled = audioCancelled,
-                        onAnimationComplete = {
-                            showRecordingUi = false
-                            audioCancelled = false
-                        }
-                    )
+                    AudioRecordingInput(cancelled = audioCancelled, onAnimationComplete = {
+                        showRecordingUi = false
+                        audioCancelled = false
+                    })
                 }
 
                 /// Show Text Input Field when not recording
@@ -120,7 +121,8 @@ fun InputField(
                         onChange = { inputString = it },
                         onAttachmentClick = { showAttachmentSheet = !showAttachmentSheet },
                         inputFieldStyle = inputFieldStyle,
-                        modifier = Modifier
+                        modifier = Modifier,
+                        attachmentStyle = attachmentStyle
                     )
                 }
             }
@@ -128,72 +130,85 @@ fun InputField(
             /// Display hold-to-record button if input is empty, otherwise show send button
             if (inputString.isEmpty()) {
                 HoldableButton(
-                    onHold = { showRecordingUi = true },
-                    onRelease = {
-                        showRecordingUi = false
+                    onHold = {
+                        audioCancelled = false
+                        showRecordingUi = true
                     },
-                    onSwipeLeft = {
-                        audioCancelled = true
+                    onCancelRecording = {
+                        scope.launch {
+                            audioCancelled = true
+                            delay(1500)
+                            showRecordingUi = false
+
+                        }
+
                     },
                     isRecording = showRecordingUi,
-                    backGroundColor = inputFieldStyle.recordButtonBackGroundColor,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
+                    onStopRecord = {
+                        println("Recorded file path: $it")
+                        onSend(
+                            AudioMessage(
+                                id = Random.nextInt(100000).toString(),
+                                messageContent = it,
+                                localFilePath = it,
+                                messageReactions = emptyList(),
+                                replyingToMessageId = null,
+                                sentBy = loggedInUser,
+                                sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
+                                sentTo = emptyList()
+                            )
+                        )
+                        showRecordingUi = false
+                    },
+
+                    backGroundColor = inputFieldStyle.recordSendButtonBackGroundColor,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    iconColor = inputFieldStyle.recordSendButtonIconColor,
                 ) {
                     Image(
-                        modifier = Modifier
-                            .clip(CircleShape),
+                        modifier = Modifier.clip(CircleShape),
                         painter = painterResource(Res.drawable.baseline_mic_24),
                         contentDescription = "Start recording"
                     )
                 }
             } else {
-                Button(
-                    onClick = {
-                        onSend(
-                            TextMessage(
-                                messageContent = inputString,
-                                id = Random.nextInt(100000).toString(),
-                                sentTo = emptyList(),
-                                sentBy = loggedInUser,
-                                messageReactions = emptyList(),
-                                replyingToMessageId = null,
-                                sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+                Box(
+
+                    Modifier.align(Alignment.CenterEnd).size(buttonSize.dp).clip(CircleShape)
+                        .background(inputFieldStyle.recordSendButtonBackGroundColor).clickable {
+                            onSend(
+                                TextMessage(
+                                    messageContent = inputString,
+                                    id = Random.nextInt(100000).toString(),
+                                    sentTo = emptyList(),
+                                    sentBy = loggedInUser,
+                                    messageReactions = emptyList(),
+                                    replyingToMessageId = null,
+                                    sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+                                )
                             )
-                        )
-                        inputString = ""
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = inputFieldStyle.recordButtonBackGroundColor
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .size(buttonSize.dp)
-                        .clip(CircleShape)
+                            inputString = ""
+                        },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Image(
+                        modifier = Modifier,
                         painter = painterResource(Res.drawable.baseline_send_24),
-                        contentDescription = "Send message"
+                        contentDescription = "Start recording"
                     )
                 }
+
             }
         }
 
-        AnimatedVisibility(
-            visible = showAttachmentSheet,
-            enter = slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight } // Slide in from bottom
+        AnimatedVisibility(visible = showAttachmentSheet,
+            enter = slideInVertically(initialOffsetY = { fullHeight -> fullHeight } // Slide in from bottom
             ) + fadeIn(),
-            exit = slideOutVertically(
-                targetOffsetY = { fullHeight -> fullHeight } // Slide out to bottom
-            ) + fadeOut()
-        ) {
-            AttachmentSheetContent(
-                showAttachmentSheet,
-                attachmentOptions,
-                onAttachmentHide = {
-                    showAttachmentSheet = false
-                }
+            exit = slideOutVertically(targetOffsetY = { fullHeight -> fullHeight } // Slide out to bottom
+            ) + fadeOut()) {
+            AttachmentSheetContent(showAttachmentSheet, attachmentStyle, onAttachmentHide = {
+                showAttachmentSheet = false
+            }
 
             )
         }
@@ -204,28 +219,53 @@ fun InputField(
 @Composable
 fun HoldableButton(
     modifier: Modifier = Modifier,
-    onHold: () -> Unit,                // Starts recording
-    onSwipeLeft: () -> Unit,            // Cancels recording
-    onRelease: () -> Unit,              // Stops recording     // Flag to show recording UI
+    onHold: () -> Unit,                // Starts recording     // Cancels recording     // Stops recording     // Flag to show recording UI
     backGroundColor: Color,
     isRecording: Boolean,
+    iconColor: Color,
     swipeInfoView: (@Composable () -> Unit)? = null,
     swipeInfoModifier: Modifier = Modifier.padding(horizontal = 12.dp),
+    onStopRecord: (String) -> Unit = {},
+    onCancelRecording: () -> Unit = {},
     content: @Composable () -> Unit     // Button content
 ) {
     val buttonSize = 50.dp
-    val maxDragDistance = -300f          // Minimum left drag distance to cancel recording
+    val maxDragDistance = -300f // Minimum left drag distance to cancel recording
     var recordButtonX by remember { mutableFloatStateOf(0f) }
     var recordingCancelling by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    var _isRecording by remember { mutableStateOf(isRecording) }
-    var showSwipeInfo by remember { mutableStateOf(false) }
+    var _isRecording by remember { mutableStateOf(false) }
     val yourShimmerTheme = defaultShimmerTheme.copy(rotation = 180f)
-    LaunchedEffect(isRecording) {
-        _isRecording = isRecording
-        showSwipeInfo = isRecording
-        recordingCancelling = false
+    val recorder = remember { AudioRecord() }
+    var permissionGranted by remember { mutableStateOf(false) }
+
+    LaunchedEffect(_isRecording && permissionGranted) {
+        if (_isRecording) {
+            recordingCancelling = false
+            recorder.startRecording(
+                RecordConfig(
+                    outputLocation = OutputLocation.Cache, outputFormat = OutputFormat.MPEG_4
+                )
+            )
+        } else {
+            if (recorder.isRecording()) {
+                if (recordingCancelling) {
+                    onCancelRecording()
+                } else {
+                    val value = recorder.stopRecording()
+                    onStopRecord(value)
+                    println("Recorded file path: $value")
+                }
+
+
+
+
+            } else {
+                if (_isRecording) {
+                    onCancelRecording()
+                }
+            }
+
+        }
     }
 
 
@@ -243,61 +283,64 @@ fun HoldableButton(
     CompositionLocalProvider(
         LocalShimmerTheme provides yourShimmerTheme
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = modifier
-                .offset { IntOffset(recordButtonX.roundToInt(), 0) }
-                .pointerInput(Unit)
-                {
-                    awaitPointerEventScope {
-                        while (true) {
+        AudioRecord().RequestMicrophonePermission(onPermissionResult = {
+            permissionGranted = it
 
-                            val event = awaitPointerEvent()
-                            val isDown = event.changes.firstOrNull()?.pressed == true
-                            if (isDown && !recordingCancelling) {
-                                if (!_isRecording) {
-                                    onHold()
-                                } else {
-                                    val change = event.changes.firstOrNull()
-                                    if (change != null && change.positionChange().x < 0 && _isRecording) {
-                                        recordButtonX += change.positionChange().x
-                                        if (recordButtonX < maxDragDistance) {
-                                            recordingCancelling = true
-                                            recordButtonX = 0f
-                                            showSwipeInfo = false
-                                            onSwipeLeft()
 
-                                            //
+        }) { askPermission ->
+            Box(contentAlignment = Alignment.Center,
+                modifier = modifier.offset { IntOffset(recordButtonX.roundToInt(), 0) }
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+
+                                val event = awaitPointerEvent()
+                                val isDown = event.changes.firstOrNull()?.pressed == true
+                                if (isDown) {
+                                    if (!_isRecording) {
+                                        askPermission()
+                                        if (!_isRecording) {
+                                            onHold()
+                                            _isRecording = true
+                                        }
+                                    } else {
+                                        val change = event.changes.firstOrNull()
+                                        if (change != null && change.positionChange().x < 0 && _isRecording && !recordingCancelling) {
+                                            recordButtonX += change.positionChange().x
+                                            if (recordButtonX < maxDragDistance) {
+                                                recordingCancelling = true
+                                                recordButtonX = 0f
+
+
+                                                //
+                                            }
                                         }
                                     }
-                                }
-                            } else {
-                                recordButtonX = 0f
-                                if (!recordingCancelling) {
-                                    onRelease()
+                                } else {
+                                    recordButtonX = 0f
+                                    _isRecording = false
+
                                 }
 
                             }
-
                         }
-                    }
-                }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (showSwipeInfo) if (swipeInfoView != null) swipeInfoView() else Text(
-                    "<< Swipe left to cancel".uppercase(),
-                    modifier = Modifier.padding(end = 12.dp).shimmer(
-                    ),
-                    style = TextStyle(color = Color.White)
-                )
-                Box(
-                    Modifier.size(buttonSize).graphicsLayer(scaleX = sizeScale, scaleY = sizeScale)
-                        .clip(CircleShape)
-                        .background(Color.Red),
-                    contentAlignment = Alignment.Center,
+                    }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isRecording) if (swipeInfoView != null) swipeInfoView() else Text(
+                        "<< Swipe left to cancel".uppercase(),
+                        modifier = Modifier.padding(end = 24.dp).shimmer(
+                        ),
+                        style = TextStyle(color = MaterialTheme.colorScheme.onBackground)
+                    )
+                    Box(
+                        Modifier.size(buttonSize)
+                            .graphicsLayer(scaleX = sizeScale, scaleY = sizeScale).clip(CircleShape)
+                            .background(backGroundColor),
+                        contentAlignment = Alignment.Center,
 
-                    ) {
-                    content()
+                        ) {
+                        content()
+                    }
                 }
             }
         }

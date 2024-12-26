@@ -13,16 +13,25 @@ androidx-material = "1.12.0"
 androidx-test-junit = "1.2.1"
 compose-multiplatform = "1.7.0"
 composeShimmer = "1.3.1"
+htmlCore = "1.7.1"
+htmlCoreVersion = "1.5.11"
 junit = "4.13.2"
 kamelImageDefault = "1.0.0"
 kotlin = "2.0.21"
 kotlinx-coroutines = "1.9.0"
 kotlinxDatetime = "0.6.1"
+materialKolor = "2.0.0"
 media3Exoplayer = "1.0.1"
+material3Android = "1.3.1"
+media3Ui = "1.5.0"
+media3UiVersion = "1.2.0"
 
 [libraries]
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Exoplayer" }
+androidx-media3-ui-v120 = { module = "androidx.media3:media3-ui", version.ref = "media3UiVersion" }
 compose-shimmer = { module = "com.valentinilk.shimmer:compose-shimmer", version.ref = "composeShimmer" }
+html-core = { module = "org.jetbrains.compose.html:html-core", version.ref = "htmlCore" }
+html-core-v1511 = { module = "org.jetbrains.compose.html:html-core", version.ref = "htmlCoreVersion" }
 kamel-image-default = { module = "media.kamel:kamel-image-default", version.ref = "kamelImageDefault" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
@@ -38,6 +47,9 @@ androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", nam
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+androidx-material3-android = { group = "androidx.compose.material3", name = "material3-android", version.ref = "material3Android" }
+material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
+androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3Ui" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

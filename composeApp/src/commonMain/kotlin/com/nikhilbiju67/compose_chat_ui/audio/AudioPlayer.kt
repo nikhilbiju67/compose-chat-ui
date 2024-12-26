@@ -1,16 +1,16 @@
 package com.nikhilbiju67.compose_chat_ui.audio
 
-import kotlinx.coroutines.flow.Flow
+import models.AudioMessage
 
-expect class AudioPlayer(playerState: PlayerState) {
-    fun play()
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+expect class AudioPlayer(
+    playerState: PlayerState,
+    onProgressCallback: (PlayerState) -> Unit,
+) {
     fun pause()
-    fun next()
-    fun prev()
-    fun play(songIndex: Int)
-    fun seekTo(time: Double)
-    fun addSongsUrls(songsUrl: List<String>)
+    fun play(message: AudioMessage)
     fun playerState(): PlayerState
     fun cleanUp()
-    val audioProgress: Flow<Double> // Flow to observe audio progress in seconds
+
+// Flow to observe media status
 }

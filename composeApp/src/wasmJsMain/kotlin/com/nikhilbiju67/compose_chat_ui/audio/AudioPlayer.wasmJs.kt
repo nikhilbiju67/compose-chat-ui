@@ -1,92 +1,97 @@
 package com.nikhilbiju67.compose_chat_ui.audio
 
 import kotlinx.browser.document
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import models.AudioMessage
 import org.w3c.dom.HTMLAudioElement
 
-actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
+actual class AudioPlayer actual constructor(
+    private val playerState: PlayerState,
+    private val onProgressCallback: (PlayerState) -> Unit
+) {
     private val audioElement = document.createElement("audio") as HTMLAudioElement
-    private val mediaItems = mutableListOf<String>()
-    private var currentItemIndex = -1
-
-    actual fun play() {
-        setupListeners()
-        if (currentItemIndex == -1 && mediaItems.isNotEmpty()) {
-            play(0)
-        } else {
-            audioElement.play()
-            playerState.isPlaying = true
+    private var currentUrl: String? = null
+    private val _playerState = MutableStateFlow(playerState)
+    private var currentPlaying: AudioMessage? = null
+    actual fun play(message: AudioMessage) {
+        val url = message.effectiveAudioSource
+        if (url == null) {
+            return
         }
+        currentPlaying = message
+        _playerState.update {
+            it.copy(
+                isPlaying = true,
+                currentlyPlayingId = currentPlaying?.id
+            )
+        }
+        setupListeners()
+        if (url != currentUrl) {
+            currentUrl = url
+            audioElement.src = if (isLocalFile(url)) "file://$url" else url
+        }
+        audioElement.play()
+
+        onProgressCallback(_playerState.value)
     }
+
     private fun setupListeners() {
         audioElement.addEventListener("timeupdate", {
-            _audioProgress.value = audioElement.currentTime
-            playerState.currentTime = audioElement.currentTime.toLong()
-            playerState.duration = audioElement.duration.toLong()
+
+            _playerState.value= _playerState.value.copy(
+                currentTime = audioElement.currentTime.toInt(),
+                duration = audioElement.duration.toInt(),
+                isPlaying = _playerState.value.isPlaying,
+                currentlyPlayingId = currentPlaying?.id,
+                isBuffering = false)
+
+            onProgressCallback(_playerState.value)
+
         })
 
         audioElement.addEventListener("ended", {
-            next()
+            currentUrl = null
+            _playerState.value = _playerState.value.copy(
+                isPlaying = false,
+                currentTime = 0,
+                duration = 0,
+                currentlyPlayingId = null
+            )
+            onProgressCallback(_playerState.value)
         })
 
         audioElement.addEventListener("error", {
-//            playerState.error = "An error occurred during playback."
+            playerState.isPlaying = false
+            // Handle playback error if needed
         })
     }
+
     actual fun pause() {
         audioElement.pause()
-        playerState.isPlaying = false
+        _playerState.value= _playerState.value.copy(
+            isPlaying = false,
+            isBuffering = false
+        )
+
+        onProgressCallback(_playerState.value)
     }
 
-    actual fun next() {
-        if (currentItemIndex + 1 < mediaItems.size) {
-            play(currentItemIndex + 1)
-        }
-    }
-
-    actual fun prev() {
-        if (currentItemIndex > 0) {
-            play(currentItemIndex - 1)
-        } else {
-            seekTo(0.0)
-        }
-    }
-
-    actual fun play(songIndex: Int) {
-        if (songIndex in mediaItems.indices) {
-            currentItemIndex = songIndex
-            audioElement.src = mediaItems[songIndex]
-            audioElement.play()
-            playerState.isPlaying = true
-            playerState.currentItemIndex = songIndex
-        }
-    }
-
-    actual fun seekTo(time: Double) {
-        audioElement.currentTime = time
-    }
-
-    actual fun addSongsUrls(songsUrl: List<String>) {
-        mediaItems.clear()
-        mediaItems.addAll(songsUrl)
-        if (mediaItems.isNotEmpty()) {
-            play(0)
-        }
-    }
 
     actual fun cleanUp() {
         audioElement.pause()
         audioElement.src = ""
-        _audioProgress.value = 0.0
+        currentUrl = null
+    }
+
+    private fun isLocalFile(path: String): Boolean {
+        // This implementation assumes you have a way to determine if a path is local
+        return path.startsWith("/") || path.startsWith("file://")
     }
 
     actual fun playerState(): PlayerState {
         return playerState
     }
 
-    private val _audioProgress = MutableStateFlow(0.0)
-    actual val audioProgress: Flow<Double> get() = _audioProgress.asStateFlow()
 
 }

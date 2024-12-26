@@ -1,6 +1,5 @@
 package com.nikhilbiju67.compose_chat_ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -9,8 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -20,11 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nikhilbiju67.compose_chat_ui.components.input_components.InputField
+import com.nikhilbiju67.compose_chat_ui.components.message_bubble.MessageBubble
 import com.nikhilbiju67.compose_chat_ui.styles.BubbleStyle
 import com.nikhilbiju67.compose_chat_ui.styles.ChatStyle
 import com.nikhilbiju67.compose_chat_ui.styles.MessageBubbleStyle
 import com.nikhilbiju67.compose_chat_ui.styles.defaultChatStyle
-import com.nikhilbiju67.compose_chat_ui.components.message_bubble.MessageBubble
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -34,6 +32,7 @@ import models.Message
 import models.MessageData
 import models.TextMessage
 import models.User
+import models.VideoMessage
 
 
 @Composable
@@ -44,66 +43,80 @@ fun ChatView(
     chatStyle: ChatStyle = defaultChatStyle
 ) {
 
-    Box(modifier = modifier.background(chatStyle.containerStyle.backGroundColor))
-    {
+    // Chat container with a customizable background color
+    Box(modifier = modifier.background(chatStyle.containerStyle.backGroundColor)) {
+
+        /// LazyColumn to display endless messages with load more functionality
         EndlessLazyColumn(
             modifier = Modifier,
             items = messageData.messages,
 
-            itemContent = { modifier, it ->
+            /// Define how each message bubble is displayed
+            itemContent = { modifier, message ->
                 MessageBubble(
                     modifier = modifier,
-                    it,
-                    it.sentBy.id == messageData.loggedInUser.id,
+                    message = message,
+                    isSender = message.sentBy.id == messageData.loggedInUser.id,
                     bubbleStyle = getBubbleStyle(
                         messageData.loggedInUser.id,
-                        it,
+                        message,
                         chatStyle.messageBubbleStyle
                     ),
                     messageBubbleStyle = chatStyle.messageBubbleStyle
                 )
             },
+
+            /// Loading indicator
             loading = false,
             loadingItem = {
                 Text("Loading")
             },
+
+            /// Remember list state for smooth scrolling
             listState = rememberLazyListState(),
 
+            /// Callback for loading more items when reaching the end of the list
             loadMore = {
-                println("load more")
+                println("Load more")
             },
+
+            /// Key for each list item to improve performance and stability
             listItemKey = {
                 it.id
             },
         )
+
+        /// Input field for sending messages, aligned at the bottom of the screen
         InputField(
             onSend = {
                 onSend(it)
             },
             modifier = Modifier.align(Alignment.BottomCenter),
             inputFieldStyle = chatStyle.inputFieldStyle,
-            attachmentOptions = chatStyle.attachmentStyle,
+            attachmentStyle = chatStyle.attachmentStyle,
             loggedInUser = messageData.loggedInUser,
         )
-
-
     }
 }
 
+/**
+ * Determine the bubble style based on whether the message is sent or received.
+ */
 fun getBubbleStyle(
     loggedInUserId: String,
     message: Message,
     messageBubbleStyle: MessageBubbleStyle
 ): BubbleStyle {
-    if (loggedInUserId == message.sentBy.id)
-        return messageBubbleStyle.outGoingBubbleStyle
-    else {
-        return messageBubbleStyle.incomingBubbleStyle
+    return if (loggedInUserId == message.sentBy.id) {
+        messageBubbleStyle.outGoingBubbleStyle
+    } else {
+        messageBubbleStyle.incomingBubbleStyle
     }
 }
 
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
+/**
+ * Composable for displaying an endless lazy column with load-more support.
+ */
 @Composable
 internal fun <T> EndlessLazyColumn(
     modifier: Modifier = Modifier,
@@ -116,66 +129,43 @@ internal fun <T> EndlessLazyColumn(
     loadMore: () -> Unit
 ) {
 
+    /// Scroll to the top when new items are added
     LaunchedEffect(items) {
-        ///if scroll position is zero animate to 0
         if (!listState.canScrollBackward)
             listState.animateScrollToItem(0)
     }
 
-    val reachedBottom: Boolean by remember { derivedStateOf { listState.reachedBottom() } }
+    /// Detect when the user scrolls to the bottom
+    val reachedBottom: Boolean by remember {
+        derivedStateOf { listState.reachedBottom() }
+    }
 
-    // load more if scrolled to bottom
+    /// Trigger load more when scrolled to the bottom
     LaunchedEffect(reachedBottom) {
         if (reachedBottom && !loading) loadMore()
     }
-    LaunchedEffect(items) {
-        ///if scroll position is zero animate to 0
-        if (!listState.canScrollBackward)
-            listState.animateScrollToItem(0)
-    }
 
+    /// LazyColumn for displaying items in reverse order (most recent at the bottom)
     LazyColumn(
-        modifier = modifier
-            .fillMaxHeight(),
+        modifier = modifier.fillMaxHeight(),
         state = listState,
         reverseLayout = true
     ) {
+
+        /// Spacer at the top for additional padding
         item {
-            Box(modifier = Modifier.height(64.dp)) {
-                Text("End")
-            }
+            Box(modifier = Modifier.height(64.dp)) {}
         }
-//        items(
-//            items = list,
-//            key = {
-//                Math.random()
-//            }
-//        ){
-//            ListItem(modifier=Modifier.animateItemPlacement())
-//
-//        }
+
+        /// Display each item with animation and unique key
         items(
             items,
-
-//          key = { itemKey(items[it]) }
-            key = { message ->
-                // Return a stable + unique key for the item
-                listItemKey(message)
-            }
-
-        ) { it ->
-
-            itemContent(
-                Modifier.animateItem(
-
-                ), it
-            )
+            key = { message -> listItemKey(message) }
+        ) { item ->
+            itemContent(Modifier.animateItem(), item)
         }
-//        items.forEach { item ->
-//            item(key = itemKey(item)) {
-//                itemContent(item)
-//            }
-//        }
+
+        /// Show loading indicator if loading is in progress
         if (loading) {
             item {
                 loadingItem()
@@ -184,18 +174,36 @@ internal fun <T> EndlessLazyColumn(
     }
 }
 
+
 private fun LazyListState.reachedBottom(): Boolean {
     val lastVisibleItem = this.layoutInfo.visibleItemsInfo.lastOrNull()
     return lastVisibleItem?.index != 0 && lastVisibleItem?.index == this.layoutInfo.totalItemsCount - 1
 }
 
 val messages = listOf(
+    VideoMessage(
+        id = "18",
+        sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
+        sentBy = User("2", "Nikhil", ""),
+        sentTo = emptyList(),
+        url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
+    ),
+    AudioMessage(
+        id = "16",
+        sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
+        sentBy = User("2", "Nikhil", ""),
+        sentTo = emptyList(),
+        url = "https://onlinetestcase.com/wp-content/uploads/2023/06/5-MB-MP3.mp3",
+        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
+    ),
     AudioMessage(
         id = "10",
         sendAt = Clock.System.now().toLocalDateTime(TimeZone.UTC),
         sentBy = User("2", "Nikhil", ""),
         sentTo = emptyList(),
-        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/500-KB-MP3.mp3",
+        url = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
+        messageContent = "https://onlinetestcase.com/wp-content/uploads/2023/06/100-KB-MP3.mp3",
     ),
     TextMessage(
         id = "1",

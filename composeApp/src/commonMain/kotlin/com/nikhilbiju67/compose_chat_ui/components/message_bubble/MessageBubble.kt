@@ -6,13 +6,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.nikhilbiju67.compose_chat_ui.audio.PlayerState
 import com.nikhilbiju67.compose_chat_ui.styles.BubbleStyle
 import com.nikhilbiju67.compose_chat_ui.styles.ImageMessageStyle
 import com.nikhilbiju67.compose_chat_ui.styles.MessageBubbleStyle
@@ -58,22 +63,13 @@ fun MessageBubble(
     bubbleStyle: BubbleStyle,
     messageBubbleStyle: MessageBubbleStyle
 ) {
-
-//    LaunchedEffect(isVisible) {
-//
-//        if (!isVisible) {
-//            delay(500)
-//            isVisible = true
-//        }
-//
-//    }
-
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (isSender) Arrangement.End else Arrangement.Start
     ) {
         Column(
-            modifier = Modifier.padding(
+            horizontalAlignment = if (isSender) Alignment.End else Alignment.Start,
+            modifier = Modifier. widthIn(0.dp,300.dp).padding(
                 8.dp
             ).bubble(
                 color = bubbleStyle.color,
@@ -90,7 +86,9 @@ fun MessageBubble(
                 }
 
                 is VideoMessage -> {
-                    VideoMessageContent(message)
+                    val playerState by remember { mutableStateOf(PlayerState()) }
+                    VideoMessageBubble(message)
+//                    VideoMessageContent(message)
                 }
 
 
@@ -105,7 +103,7 @@ fun MessageBubble(
 
 
                 is AudioMessage -> {
-                    AudioMessageContent(message,messageBubbleStyle.audioBubble)
+                    AudioMessageContent(message, messageBubbleStyle.audioBubble)
                 }
 
 
@@ -167,7 +165,7 @@ fun AudioMessageContent(
     audioBubble: @Composable (AudioMessage) -> Unit
 ) {
     Column {
-        AudioMessageBubble(audioMessage,audioBubble)
+        AudioMessageBubble(audioMessage, audioBubble)
     }
 
 }
