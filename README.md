@@ -5,9 +5,9 @@ https://github.com/user-attachments/assets/7c09b9af-05bf-4556-92db-bbe5b19b2360
 
 This project is a Compose Multiplatform demonstration showcasing a chat interface. The application is designed to run seamlessly across Android, iOS, desktop, and web platforms, delivering a consistent user experience.
 
-[**Live Demo**](https://nikhilbiju67.github.io/compose-chat-ui/)
-
 **⭐ If you like this project, please give it a star on GitHub!**
+
+[**Live Demo**](https://nikhilbiju67.github.io/compose-chat-ui/)
 
 ## Features
 
