@@ -69,7 +69,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Acknowledgments
 
-- [Jetpack Compose Multiplatform](https://www.jetbrains.com/compose/) for enabling seamless UI development across platforms.
-- [VLC Media Player](https://www.videolan.org/vlc/) for desktop audio playback.
+- [ Compose Multiplatform](https://www.jetbrains.com/compose/) for enabling seamless UI development across platforms.
+- [VLC Media Player](https://www.videolan.org/vlc/) for desktop audio/video playback.
 - Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html), [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform), [Kotlin/Wasm](https://kotl.in/wasm/).
 
