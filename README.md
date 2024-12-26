@@ -7,7 +7,7 @@ This project is a Compose Multiplatform demonstration showcasing a chat interfac
 
 **⭐ If you like this project, please give it a star on GitHub!**
 
-[**Live Demo**](https://nikhilbiju67.github.io/compose-chat-ui/)
+[**Live Demo**](https://nikhilbiju67.github.io/compose-chat-ui/)  Open in chrome
 
 ## Features
 
