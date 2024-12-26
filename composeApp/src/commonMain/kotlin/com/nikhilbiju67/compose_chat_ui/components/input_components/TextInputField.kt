@@ -57,8 +57,10 @@ fun TextInputField(
             TextField(
                 value,
                 colors = TextFieldDefaults.colors(
-
-                ),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                    ),
                 shape = RoundedCornerShape(25.dp),
                 onValueChange = onChange,
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp),

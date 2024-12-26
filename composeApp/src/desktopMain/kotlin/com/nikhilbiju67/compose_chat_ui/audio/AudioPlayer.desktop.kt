@@ -6,18 +6,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import models.AudioMessage
 import models.MediaStatus
-import models.Message
 import uk.co.caprica.vlcj.factory.discovery.NativeDiscovery
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
 import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer
 
-actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
-    private var mediaPlayer: MediaPlayer? = null
+actual class AudioPlayer actual constructor(
+    private val playerState: PlayerState, private val onProgressCallback: (PlayerState) -> Unit,
 
+    ) {
+    private var mediaPlayer: MediaPlayer? = null
     private val _mediaStatus = MutableStateFlow(MediaStatus())
     actual val mediaStatus: Flow<MediaStatus> get() = _mediaStatus.asStateFlow()
+    var currentlyPlaying: AudioMessage? = null
 
     init {
         initializeMediaPlayer()
@@ -31,45 +33,81 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         (mediaPlayer as EmbeddedMediaPlayer?)?.videoSurface()?.set(null) // No video output needed
         mediaPlayer?.events()?.addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
             override fun timeChanged(mediaPlayer: MediaPlayer?, newTime: Long) {
-                playerState.currentTime = newTime / 1000
-                playerState.duration = mediaPlayer?.media()?.info()?.duration() ?: 0
-                var progressPercentage = playerState.currentTime.toFloat()/ playerState.duration.toFloat()
-
-                _mediaStatus.value = MediaStatus(
-                    isPlaying = playerState.isPlaying,
-                    audioProgress = progressPercentage.toFloat()
+                playerState.currentTime = (newTime / 1000).toInt()
+                playerState.duration = ((mediaPlayer?.media()?.info()?.duration() ?: 0)/1000).toInt()
+                onProgressCallback(
+                    PlayerState(
+                        isPlaying = playerState.isPlaying,
+                        currentTime = playerState.currentTime,
+                        duration = playerState.duration,
+                        currentlyPlayingId = currentlyPlaying?.id
+                    )
                 )
+//                _mediaStatus.update {
+//                    it.copy(
+//                        audioProgress = progressPercentage / 100,
+//                        isPlaying = playerState.isPlaying,
+//                        currentlyPlaying = currentlyPlaying,
+//                    )
+//                }
 
+
+            }
+
+            override fun mediaPlayerReady(mediaPlayer: MediaPlayer?) {
+                super.mediaPlayerReady(mediaPlayer)
 
             }
 
             override fun finished(mediaPlayer: MediaPlayer?) {
                 playerState.isPlaying = false
                 playerState.currentTime = 0
-                _mediaStatus.update {
-                    it.copy(
-                        playerState = playerState,
-                        isPlaying = playerState.isPlaying,
-                        audioProgress = 0f
+                onProgressCallback(
+                    PlayerState(
+                        isPlaying = false,
+                        currentTime = 0,
+                        duration = playerState.duration,
+                        currentlyPlayingId = currentlyPlaying?.id
                     )
-                }
+                )
             }
 
             override fun error(mediaPlayer: MediaPlayer?) {
-                // Handle error (e.g., set an error state in playerState)
+                playerState.isPlaying = false
+                onProgressCallback(
+                    PlayerState(
+                        isPlaying = false,
+                        currentTime = 0,
+                        duration = playerState.duration,
+                        currentlyPlayingId = currentlyPlaying?.id
+                    )
+                )
             }
         })
     }
 
     actual fun play(message: AudioMessage) {
         var url = message.effectiveAudioSource
-        if(url == null) {
+        if (url == null) {
             return
         }
         println("Attempting to play: $url")
         if (mediaPlayer?.media()?.play(url) == true) {
+            currentlyPlaying = message
+            onProgressCallback(
+                playerState.copy(
+                    isPlaying = true,
+                    currentlyPlayingId = currentlyPlaying?.id
+                )
+            )
             println("Playback started successfully.")
             playerState.isPlaying = true
+
+            _mediaStatus.update {
+                it.copy(
+                    isPlaying = playerState.isPlaying
+                )
+            }
             mediaPlayer?.audio()?.setVolume(100) // Set volume to 100%
         } else {
             println("Failed to start playback.")

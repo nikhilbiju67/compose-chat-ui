@@ -8,28 +8,20 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import models.AudioMessage
-import models.MediaStatus
 import java.io.File
 
-actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
+actual class AudioPlayer actual constructor(
+    private val playerState: PlayerState,
+    private val onProgressCallback: (PlayerState) -> Unit
+) {
     private var mediaPlayer: ExoPlayer = ExoPlayer.Builder(ChatAndroidApp.appContext).build()
     private val mediaItems = mutableListOf<MediaItem>()
     private var currentItemIndex = -1
-
-    private val _mediaStatus = MutableStateFlow(
-        MediaStatus(
-            audioProgress = 0f,
-            isPlaying = false,
-            playerState = playerState
-        )
-    )
-    actual val mediaStatus: Flow<MediaStatus> get() = _mediaStatus.asStateFlow()
+    private val _playerState = MutableStateFlow(playerState)
+    var currentlyPlaying: AudioMessage? = null
 
     private var progressJob: Job? = null
 
@@ -44,7 +36,7 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
 
                 Player.STATE_READY -> {
                     playerState.isBuffering = false
-                    playerState.duration = mediaPlayer.duration / 1000
+                    playerState.duration = (mediaPlayer.duration / 1000).toInt()
                     updateMediaStatus()
                 }
             }
@@ -71,13 +63,14 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         } else {
             MediaItem.fromUri(url)
         }
+        currentlyPlaying = message
 
         mediaPlayer.setMediaItem(mediaItem)
         mediaPlayer.prepare()
         mediaPlayer.play()
 
         playerState.isPlaying = true
-        playerState.duration = mediaPlayer.duration / 1000
+        playerState.duration = (mediaPlayer.duration / 1000).toInt()
         updateMediaStatus()
     }
 
@@ -87,30 +80,12 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
         updateMediaStatus()
     }
 
-    actual fun seekTo(time: Double) {
-        val seekTime = time * 1000
-        mediaPlayer.seekTo(seekTime.toLong())
-        updateMediaStatus()
-    }
-
     actual fun cleanUp() {
         mediaPlayer.release()
         mediaPlayer.removeListener(listener)
-        _mediaStatus.value = MediaStatus(
-            audioProgress = 0f,
-            isPlaying = false,
-            playerState = playerState
-        )
         stopProgressUpdates()
     }
 
-    private fun playWithIndex(index: Int) {
-        playerState.currentItemIndex = index
-        val playItem = mediaItems[index]
-        mediaPlayer.setMediaItem(playItem)
-        mediaPlayer.play()
-        updateMediaStatus()
-    }
 
     private fun startProgressUpdates() {
         stopProgressUpdates()
@@ -118,14 +93,14 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
             while (playerState.isPlaying) {
                 val progressInPercentage =
                     mediaPlayer.currentPosition.toFloat() / mediaPlayer.duration.toFloat()
-                playerState.currentTime = mediaPlayer.currentPosition / 1000
-                _mediaStatus.update {
-                    it.copy(
-                        audioProgress = progressInPercentage,
-                        isPlaying = playerState.isPlaying,
-                        playerState = playerState
-                    )
-                }
+                _playerState.value = _playerState.value.copy(
+                    currentTime = (mediaPlayer.currentPosition / 1000).toInt(),
+                    currentlyPlayingId = currentlyPlaying?.id,
+                    isPlaying = playerState.isPlaying,
+                    isBuffering = playerState.isBuffering,
+                    duration = playerState.duration
+                )
+                onProgressCallback(_playerState.value)
                 delay(10)
             }
         }
@@ -145,11 +120,14 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
     }
 
     private fun updateMediaStatus() {
-        _mediaStatus.value = MediaStatus(
-            audioProgress = _mediaStatus.value.audioProgress,
+       _playerState.value = _playerState.value.copy(
+            currentTime = (mediaPlayer.currentPosition / 1000).toInt(),
+            currentlyPlayingId = currentlyPlaying?.id,
             isPlaying = playerState.isPlaying,
-            playerState = playerState
+            isBuffering = playerState.isBuffering,
+            duration = playerState.duration
         )
+        onProgressCallback(playerState)
     }
 }
 

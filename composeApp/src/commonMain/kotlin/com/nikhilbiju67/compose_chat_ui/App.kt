@@ -12,26 +12,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,12 +41,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.materialkolor.DynamicMaterialTheme
-import com.materialkolor.dynamicColorScheme
-import com.materialkolor.rememberDynamicColorScheme
 import com.nikhilbiju67.compose_chat_ui.audio.AudioPlayer
-import com.nikhilbiju67.compose_chat_ui.audio.rememberPlayerState
+import com.nikhilbiju67.compose_chat_ui.audio.PlayerState
 import com.nikhilbiju67.compose_chat_ui.styles.AttachmentStyle
 import com.nikhilbiju67.compose_chat_ui.styles.defaultAttachmentOptions
 import com.nikhilbiju67.compose_chat_ui.styles.defaultBubbleStyle
@@ -63,9 +57,7 @@ import composechatui.composeapp.generated.resources.dark_mode_24px
 import composechatui.composeapp.generated.resources.palette_24px
 import composechatui.composeapp.generated.resources.pause_circle_24px
 import composechatui.composeapp.generated.resources.play_circle_24px
-import kotlinx.coroutines.flow.Flow
 import models.AudioMessage
-import models.MediaStatus
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -78,15 +70,28 @@ fun App() {
         mutableStateOf(dummyData)
     }
 
-    val playerState = rememberPlayerState()
-    val audioPlayer = remember { AudioPlayer(playerState) }
+    var currentPlayerState by remember {
+        mutableStateOf(PlayerState())
+    }
+    val audioPlayer = remember {
+        AudioPlayer(currentPlayerState, onProgressCallback = { playerState ->
+
+            currentPlayerState = playerState.copy(
+                isPlaying = playerState.isPlaying,
+                isBuffering = playerState.isBuffering,
+                currentTime = playerState.currentTime,
+                duration = playerState.duration,
+                currentlyPlayingId = playerState.currentlyPlayingId
+            )
+
+        })
+    }
     var seedColor by remember {
         mutableStateOf(Color.Red)
     }
     var isDarkTheme by remember { mutableStateOf(false) }
 
     var currentlyPlaying by remember { mutableStateOf<AudioMessage?>(null) }
-    val mediaStatus: MediaStatus = audioPlayer.mediaStatus.collectAsState(MediaStatus()).value
     DynamicMaterialTheme(
         seedColor = seedColor,
         animate = true,
@@ -94,6 +99,8 @@ fun App() {
     ) {
         var showContent by remember { mutableStateOf(false) }
         Scaffold(
+            modifier = Modifier.background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.safeDrawing),
             topBar = {
                 TopAppBar(
 
@@ -135,8 +142,8 @@ fun App() {
                         inputTextStyle = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface
                         ),
-                        recordButtonIconColor = MaterialTheme.colorScheme.onPrimary,
-                        recordButtonBackGroundColor = MaterialTheme.colorScheme.primary,
+                        recordSendButtonIconColor = MaterialTheme.colorScheme.onPrimary,
+                        recordSendButtonBackGroundColor = MaterialTheme.colorScheme.primary,
                     ),
                     messageBubbleStyle = defaultBubbleStyle.copy(
                         incomingBubbleStyle = defaultBubbleStyle.incomingBubbleStyle.copy(
@@ -147,7 +154,7 @@ fun App() {
                             timeStyle = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             ),
-                            bubbleState =BubbleState(
+                            bubbleState = BubbleState(
                                 arrowShape = ArrowShape.Curved,
 
                                 cornerRadius = BubbleCornerRadius(12.dp, 20.dp, 12.dp, 16.dp),
@@ -177,13 +184,13 @@ fun App() {
                                 )
                         ),
                         audioBubble = { audioMessage ->
-                            AudioMessage(audioMessage, (mediaStatus), onPlayAudio = {
-                                currentlyPlaying = audioMessage
-                                audioPlayer.play(audioMessage)
-                            },
-
+                            AudioMessage(audioMessage,
+                                onPlayAudio = {
+                                    currentlyPlaying = audioMessage
+                                    audioPlayer.play(audioMessage)
+                                },
+                                playerState = currentPlayerState,
                                 isOutGoing = audioMessage.sentBy.id == dummyData.loggedInUser.id,
-                                currentlyPlayingAudioId = currentlyPlaying?.id,
                                 onPauseAudio = {
                                     audioPlayer.pause()
                                 })
@@ -210,9 +217,6 @@ private fun TopAppBar(
     var expanded by remember { mutableStateOf(false) }
 
     val height by animateDpAsState(targetValue = if (expanded) 150.dp else 50.dp)
-
-
-
     Column(
         modifier = modifier.shadow(
             elevation = 4.dp,
@@ -304,70 +308,65 @@ private fun TopAppBar(
 @Composable
 fun AudioMessage(
     audioMessage: AudioMessage,
-    mediaStatus: MediaStatus,
-    currentlyPlayingAudioId: String?,
     onPlayAudio: () -> Unit,
     onPauseAudio: () -> Unit,
-    isOutGoing: Boolean
+    isOutGoing: Boolean,
+    playerState: PlayerState
 ) {
     val audioPlaying by derivedStateOf {
-        mediaStatus.playerState?.isPlaying == true && currentlyPlayingAudioId == audioMessage.id
+        playerState.isPlaying == true && playerState.currentlyPlayingId == audioMessage.id
     }
-    var tintColor = if (isOutGoing) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
-    Column {
-        Spacer(Modifier.weight(1f))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(end = 24.dp)
-                .fillMaxWidth()
-        ) {
-            IconButton(
+    var tintColor =
+        if (isOutGoing) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(end = 24.dp)
+            .widthIn(300.dp)
+    ) {
+        IconButton(
 
-                modifier = Modifier.size(54.dp),
-                onClick = {
-                    if (audioPlaying) {
-                        onPauseAudio()
-                    } else {
-                        (audioMessage.effectiveAudioSource)?.let {
-                            onPlayAudio()
-                        }
+            modifier = Modifier.size(54.dp),
+            onClick = {
+                if (audioPlaying) {
+                    onPauseAudio()
+                } else {
+                    (audioMessage.effectiveAudioSource)?.let {
+                        onPlayAudio()
                     }
-                }) {
-                Icon(
-                    modifier = Modifier.size(54.dp),
-                    painter = painterResource(if (audioPlaying) Res.drawable.pause_circle_24px else Res.drawable.play_circle_24px),
-                    contentDescription = null,
-                    tint = tintColor
-                )
-            }
-
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Spacer(Modifier.weight(1f))
-                LinearProgressIndicator(
-                    progress = {
-                        if (audioPlaying) ((mediaStatus.playerState?.progressPercentage
-                            ?: 0) / 100f) else 0f
-                    },
-                    modifier = Modifier.padding(top = 24.dp).fillMaxWidth(),
-                    color = tintColor,
-                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-                Text(
-
-                    if (!audioPlaying) "0.0" else "${mediaStatus.playerState?.currentTime?.toInt() ?: "0"}s / ${mediaStatus.playerState?.duration ?: "0"}s",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = tintColor
-                    ),
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-
-            }
+                }
+            }) {
+            Icon(
+                modifier = Modifier.size(54.dp),
+                painter = painterResource(if (audioPlaying) Res.drawable.pause_circle_24px else Res.drawable.play_circle_24px),
+                contentDescription = null,
+                tint = tintColor
+            )
         }
-        Spacer(Modifier.weight(1f))
+
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Spacer(Modifier.weight(1f))
+            LinearProgressIndicator(
+                progress = {
+                    if (audioPlaying) ((playerState.progress ?: 0).toFloat()) else 0f
+                },
+                modifier = Modifier.padding(top = 24.dp).fillMaxWidth(),
+                color = tintColor,
+                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+            Text(
+
+                if (!audioPlaying) "0.0" else "${playerState.currentTime.toString() ?: "0"}s / ${playerState.duration ?: "0"}s",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = tintColor
+                ),
+                modifier = Modifier.padding(top = 12.dp)
+            )
+
+        }
     }
 
 }

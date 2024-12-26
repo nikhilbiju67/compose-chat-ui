@@ -76,11 +76,11 @@ data class InputFieldStyle(
     val textFieldBackGroundColor: Color,
     val shadow: Shadow,
     val inputTextStyle: TextStyle,
-    val recordButtonBackGroundColor: Color,
+    val recordSendButtonBackGroundColor: Color,
     val recordingText: String,
     val attachmentButtonBackGroundColor: Color,
     val bottomMargin: Dp,
-    val recordButtonIconColor: Color
+    val recordSendButtonIconColor: Color
 )
 
 data class UserSpecificBubbleStyle(
@@ -268,11 +268,11 @@ val defaultChatStyle = ChatStyle(
         inputTextStyle = TextStyle(fontSize = 15.sp, color = Color.White),
         attachmentButtonBackGroundColor = Color("#18222D".toColorInt()),
         bottomMargin = 12.dp,
-        recordButtonBackGroundColor = Color("#18222D".toColorInt()),
+        recordSendButtonBackGroundColor = Color("#18222D".toColorInt()),
         shadow = Shadow(),
         recordingText = "Recording your voice",
         textFieldBackGroundColor = Color(0xff1f2b3c),
-        recordButtonIconColor = Color.White
+        recordSendButtonIconColor = Color.White
     ),
     messageBubbleStyle = defaultBubbleStyle,
 )

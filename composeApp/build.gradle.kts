@@ -59,6 +59,7 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.media3.exoplayer)
+            implementation(libs.androidx.media3.ui.v120)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -83,6 +84,7 @@ kotlin {
             implementation("uk.co.caprica:vlcj-natives:4.7.0") // Native libraries for vlcj
         }
         wasmJsMain.dependencies{
+
             implementation("org.jetbrains.kotlinx:kotlinx-browser:0.3")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
         }

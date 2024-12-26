@@ -44,10 +44,14 @@ class VideoMessage(
     override val sendAt: LocalDateTime,
     override val sentBy: User,
     override val sentTo: List<User>,
+    val url: String? = null,
+    val localFilePath: String? = null,
     override val replyingToMessageId: String? = null,
     override val messageContent: String,
     override val messageReactions: List<MessageReaction> = emptyList()
 ) : Message() {
+    val effectiveVideoSource: String?
+        get() = if (!url.isNullOrEmpty()) url else localFilePath
     override val messageType: MessageType = MessageType.VIDEO
 
 }

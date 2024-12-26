@@ -1,23 +1,30 @@
 package com.nikhilbiju67.compose_chat_ui.audio
 
 import kotlinx.browser.document
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import models.AudioMessage
-import models.MediaStatus
 import org.w3c.dom.HTMLAudioElement
 
-actual class AudioPlayer actual constructor(private val playerState: PlayerState) {
+actual class AudioPlayer actual constructor(
+    private val playerState: PlayerState,
+    private val onProgressCallback: (PlayerState) -> Unit
+) {
     private val audioElement = document.createElement("audio") as HTMLAudioElement
     private var currentUrl: String? = null
-    private val _mediaStatus = MutableStateFlow(MediaStatus())
-    actual val mediaStatus: Flow<MediaStatus> get() = _mediaStatus.asStateFlow()
+    private val _playerState = MutableStateFlow(playerState)
+    private var currentPlaying: AudioMessage? = null
     actual fun play(message: AudioMessage) {
         val url = message.effectiveAudioSource
-        if(url == null) {
+        if (url == null) {
             return
+        }
+        currentPlaying = message
+        _playerState.update {
+            it.copy(
+                isPlaying = true,
+                currentlyPlayingId = currentPlaying?.id
+            )
         }
         setupListeners()
         if (url != currentUrl) {
@@ -25,28 +32,33 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
             audioElement.src = if (isLocalFile(url)) "file://$url" else url
         }
         audioElement.play()
-        playerState.isPlaying = true
+
+        onProgressCallback(_playerState.value)
     }
 
     private fun setupListeners() {
         audioElement.addEventListener("timeupdate", {
-            playerState.currentTime = audioElement.currentTime.toLong()
-            playerState.duration = audioElement.duration.toLong()
-            //get progress percentage
-            val progress = (audioElement.currentTime / audioElement.duration)
-            _mediaStatus.update {
-                it.copy(
-                    isPlaying = playerState.isPlaying,
-                    audioProgress = progress.toFloat(),
-                    playerState = playerState
-                )
-            }
+
+            _playerState.value= _playerState.value.copy(
+                currentTime = audioElement.currentTime.toInt(),
+                duration = audioElement.duration.toInt(),
+                isPlaying = _playerState.value.isPlaying,
+                currentlyPlayingId = currentPlaying?.id,
+                isBuffering = false)
+
+            onProgressCallback(_playerState.value)
 
         })
 
         audioElement.addEventListener("ended", {
-            playerState.isPlaying = false
             currentUrl = null
+            _playerState.value = _playerState.value.copy(
+                isPlaying = false,
+                currentTime = 0,
+                duration = 0,
+                currentlyPlayingId = null
+            )
+            onProgressCallback(_playerState.value)
         })
 
         audioElement.addEventListener("error", {
@@ -57,12 +69,14 @@ actual class AudioPlayer actual constructor(private val playerState: PlayerState
 
     actual fun pause() {
         audioElement.pause()
-        playerState.isPlaying = false
+        _playerState.value= _playerState.value.copy(
+            isPlaying = false,
+            isBuffering = false
+        )
+
+        onProgressCallback(_playerState.value)
     }
 
-    actual fun seekTo(time: Double) {
-        audioElement.currentTime = time
-    }
 
     actual fun cleanUp() {
         audioElement.pause()
